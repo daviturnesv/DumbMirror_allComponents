@@ -1,0 +1,38 @@
+.mmm-dailybriefing {
+  max-width: 520px;
+  color: #fff;
+  font-size: 18px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dailybriefing-title {
+  font-weight: 600;
+  font-size: 1.2em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.dailybriefing-body {
+  background: rgb(0 0 0 / 45%);
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 35%);
+}
+
+.dailybriefing-body p {
+  margin: 0 0 10px;
+}
+
+.dailybriefing-body p:last-child {
+  margin-bottom: 0;
+}
+
+.dailybriefing-error {
+  color: #ff9b9b;
+}

@@ -1,0 +1,9 @@
+*.js
+*.mjs
+.husky/pre-commit
+.prettierignore
+/\.gitignore
+/config
+/coverage
+package-lock.json
+**.ics

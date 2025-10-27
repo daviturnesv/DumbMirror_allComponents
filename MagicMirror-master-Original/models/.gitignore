@@ -1,0 +1,6 @@
+# Ignora todos os modelos Vosk (arquivos grandes)
+vosk-*/
+*.zip
+
+# Mantém apenas o README
+!README.md

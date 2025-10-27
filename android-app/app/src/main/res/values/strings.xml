@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DumbMirror Remote</string>
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_description">Configure a conexão com o espelho e teste a comunicação.</string>
+    <string name="dashboard_configured">Conectado ao espelho em %1$s</string>
+    <string name="dashboard_not_configured">Nenhum espelho configurado ainda.</string>
+    <string name="dashboard_configure_button">Configurar</string>
+    <string name="dashboard_test_button">Testar conexão</string>
+    <string name="dashboard_testing">Testando...</string>
+    <string name="dashboard_config_dialog_title">Configuração de conexão</string>
+    <string name="dashboard_save_config">Salvar</string>
+    <string name="dashboard_cancel_config">Cancelar</string>
+    <string name="dashboard_config_url_label">Endereço base do espelho</string>
+    <string name="dashboard_config_token_label">Token de acesso (opcional)</string>
+    <string name="dashboard_config_token_hint">Use o token do módulo MMM-Remote-Control para comandos autenticados.</string>
+    <string name="dashboard_mode_label">Modo de conexão</string>
+    <string name="dashboard_mode_lan">LAN</string>
+    <string name="dashboard_mode_relay">Relay</string>
+    <string name="dashboard_relay_url_label">Endereço do Relay</string>
+    <string name="dashboard_relay_token_label">Token do Relay (JWT)</string>
+    <string name="dashboard_relay_mirror_id_label">ID do Espelho (mirrorId)</string>
+    <string name="dashboard_relay_hint">Faça login no servidor Relay para obter o token e selecione o espelho (mirrorId) cadastrado.</string>
+    <string name="dashboard_relay_hint_emulator">Dica: no Emulador Android, use http://10.0.2.2:PORT (ex.: 10.0.2.2:8081) em vez de localhost para acessar seu PC.</string>
+    <string name="dashboard_relay_login_button">Fazer login</string>
+    <string name="dashboard_relay_pick_mirror_button">Selecionar espelho</string>
+    <string name="relay_login_title">Login no Relay</string>
+    <string name="relay_login_email">Email</string>
+    <string name="relay_login_password">Senha</string>
+    <string name="relay_login_confirm">Entrar</string>
+    <string name="relay_login_cancel">Cancelar</string>
+    <string name="relay_login_register">Criar conta</string>
+    <string name="relay_picker_title">Selecione um espelho</string>
+    <string name="relay_picker_close">Fechar</string>
+    <string name="relay_picker_empty">Nenhum espelho encontrado para esta conta.</string>
+    <string name="relay_create_mirror_name">Nome do novo espelho</string>
+    <string name="relay_create_mirror_button">Criar espelho</string>
+    <string name="dashboard_configured_relay">Conectado via Relay em %1$s (espelho %2$s)</string>
+</resources>

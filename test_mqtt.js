@@ -1,0 +1,1 @@
+console.log( ENV PATH=, process.env.MMM_SENSOR_MQTT_PATH); try { require(mqtt); console.log(direct ok); } catch(e){ console.log(direct fail, e.message); } try { const p= process.env.MMM_SENSOR_MQTT_PATH + /mqtt; require(p); console.log(env path ok); } catch(e){ console.log(env path fail, e.message); }

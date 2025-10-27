@@ -1,0 +1,45 @@
+.mmm-pages {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 0.3rem 0;
+}
+
+.mmm-pages__indicator {
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.mmm-pages__indicator-button {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0.7rem;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.mmm-pages__indicator-button:hover,
+.mmm-pages__indicator-button:focus {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.18);
+  outline: none;
+}
+
+.mmm-pages__indicator-button.is-active {
+  background: rgba(255, 255, 255, 0.4);
+  color: #000;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.mmm-pages--indicator-disabled {
+  display: none;
+}

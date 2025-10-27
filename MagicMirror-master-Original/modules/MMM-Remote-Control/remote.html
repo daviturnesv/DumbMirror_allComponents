@@ -1,0 +1,810 @@
+<!doctype html>
+<html>
+  <head>
+    <title>%%TRANSLATE:TITLE%%</title>
+    <meta name="google" content="notranslate" />
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+    <link rel="stylesheet" type="text/css" href="css/main.css" />
+    <!--
+     We need this onerror handling because MagicMirror changed the location of the css files in version 2.32.0.
+     We can remove this after a while, when most users have updated to the new version.
+     -->
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="css/roboto.css"
+      onerror="this.onerror=null;this.href='fonts/roboto.css';"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="css/font-awesome.css"
+      onerror="this.onerror=null;this.href='vendor/css/font-awesome.css';"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="modules/MMM-Remote-Control/remote.css"
+    />
+    <link
+      rel="apple-touch-icon"
+      href="modules/MMM-Remote-Control/img/apple-touch-icon.png"
+    />
+    <meta name="apple-mobile-web-app-title" content="DumbMirror" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="modules/MMM-Remote-Control/manifest.json" />
+    <meta name="theme-color" content="#1a1a1a" />
+    
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="modules/MMM-Remote-Control/img/pwa-icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="modules/MMM-Remote-Control/img/pwa-icon-512.png" />
+  </head>
+
+  <body>
+    <!-- PWA Install Banner -->
+    <div id="pwa-install-banner">
+      <div class="banner-content">
+        <div class="banner-title">
+          <span>📱</span>
+          <span>Instalar App DumbMirror</span>
+        </div>
+        <div class="banner-text" id="banner-text-instructions">
+          Para melhor experiência, instale como app (tela cheia, sem navegador)
+        </div>
+      </div>
+      <div class="banner-buttons">
+        <button id="pwa-install-btn">Instalar</button>
+        <button id="pwa-dismiss-btn">✕</button>
+      </div>
+    </div>
+    
+    <!-- PWA Installed Badge -->
+    <div class="pwa-installed-badge">
+      <span class="badge-icon"></span>
+      <span>App Instalado</span>
+    </div>
+    
+    <div class="container normal fill">
+      <div id="module_1_MMM-Remote-Control" class="fill">
+        <header class="header">%%TRANSLATE:TITLE%%</header>
+        <div class="fill">
+          <div class="menu above-fold">
+            <!-- general back button -->
+            <div
+              id="back-button"
+              class="menu-element hidden button power-menu edit-menu settings-menu add-module-menu update-menu classes-menu alert-menu"
+            >
+              <span class="fa fa-fw fa-angle-left" aria-hidden="true"></span>
+              <!-- <span class="text">%%TRANSLATE:BACK%%</span> -->
+            </div>
+            <!-- alert menu -->
+            <div
+              id="send-alert-button"
+              class="menu-element hidden button alert-menu"
+            >
+              <span class="fa fa-fw fa-send-o" aria-hidden="true"></span>
+              <span class="text">%%TRANSLATE:SENDALERT%%</span>
+            </div>
+            <div
+              id="hide-alert-button"
+              class="menu-element hidden button alert-menu"
+            >
+              <span class="fa fa-fw fa-eye-slash" aria-hidden="true"></span>
+              <span class="text">%%TRANSLATE:HIDEALERT%%</span>
+            </div>
+            <!-- edit menu -->
+            <div id="save-button" class="menu-element hidden button edit-menu">
+              <span class="fa fa-fw fa-save" aria-hidden="true"></span>
+              <span class="text">%%TRANSLATE:SAVE%%</span>
+            </div>
+            <div
+              id="show-all-button"
+              class="menu-element hidden button edit-menu"
+            >
+              <span class="fa fa-fw fa-toggle-on" aria-hidden="true"></span>
+              <span class="text">%%TRANSLATE:SHOWALL%%</span>
+            </div>
+            <div
+              id="hide-all-button"
+              class="menu-element hidden button edit-menu"
+            >
+              <span class="fa fa-fw fa-toggle-off" aria-hidden="true"></span>
+              <span class="text">%%TRANSLATE:HIDEALL%%</span>
+            </div>
+            <div class="menu-element-container">
+              <div class="menu-element hidden edit-menu one-line">
+                <span class="stack fa-fw">
+                  <span
+                    class="fa fa-fw fa-sun-o outer-label fa-stack-1x"
+                    aria-hidden="true"
+                  ></span>
+                  <span
+                    class="fa fa-fw fa-adjust inner-label fa-stack-1x"
+                    aria-hidden="true"
+                  ></span>
+                </span>
+                <div
+                  id="brightness-container"
+                  class="slider-container menu-element hidden button edit-menu"
+                >
+                  <input
+                    id="brightness-slider"
+                    type="range"
+                    min="0"
+                    max="200"
+                    step="10"
+                    value="100"
+                    class="slider"
+                  />
+                </div>
+                <span
+                  id="brightness-reset"
+                  class="inline-menu-element hidden button edit-menu"
+                >
+                  <span class="fa fa-fw fa-undo" aria-hidden="true"></span>
+                </span>
+              </div>
+              <div class="menu-element hidden edit-menu one-line">
+                <span class="stack fa-fw">
+                  <span
+                    class="fa fa-fw fa-thermometer-three-quarters"
+                    aria-hidden="true"
+                  ></span>
+                </span>
+                <div
+                  id="temp-container"
+                  class="slider-container menu-element hidden button edit-menu"
+                >
+                  <input
+                    id="temp-slider"
+                    type="range"
+                    min="140"
+                    max="500"
+                    step="20"
+                    value="325"
+                    class="slider"
+                  />
+                </div>
+                <span
+                  id="temp-reset"
+                  class="inline-menu-element hidden button edit-menu"
+                >
+                  <span class="fa fa-fw fa-undo" aria-hidden="true"></span>
+                </span>
+              </div>
+            </div>
+
+            <!-- module menu -->
+            <div
+              id="add-module"
+              class="menu-element hidden button settings-menu"
+            >
+              <span class="fa fa-fw fa-plus" aria-hidden="true"></span>
+              <span class="text">%%TRANSLATE:ADD_MODULE%%</span>
+            </div>
+            <div
+              id="save-config"
+              class="menu-element hidden button settings-menu"
+            >
+              <span class="fa fa-fw fa-save" aria-hidden="true"></span>
+              <span class="text">%%TRANSLATE:SAVE%%</span>
+            </div>
+            <div
+              id="undo-config"
+              class="menu-element hidden button settings-menu"
+            >
+              <span class="fa fa-fw fa-undo" aria-hidden="true"></span>
+            </div>
+            <!-- add new module menu -->
+            <div
+              id="search-container"
+              class="menu-element hidden add-module-menu search-container"
+            >
+              <span class="fa fa-fw fa-search" aria-hidden="true"></span>
+              <input
+                class="input-with-symbol"
+                id="add-module-search"
+                type="text"
+                placeholder="%%TRANSLATE:SEARCH%%"
+                size="10"
+              />
+              <span
+                id="delete-search-input"
+                class="fa fa-times-circle delete-button"
+                style="display: none"
+              ></span>
+            </div>
+            <!-- update menu -->
+            <div
+              id="update-mm-button"
+              class="menu-element hidden button update-menu"
+            >
+              <span class="fa fa-fw fa-toggle-up" aria-hidden="true"></span>
+              <span class="text">%%TRANSLATE:UPDATEMM%%</span>
+            </div>
+            <div
+              id="update-mm-status"
+              class="menu-element flex-like-button hidden"
+            >
+              <span class="fa fa-fw fa-info-circle" aria-hidden="true"></span>
+              <span class="text">%%TRANSLATE:UPDATE_AVAILABLE%%</span>
+            </div>
+          </div>
+          <div
+            id="below-fold"
+            class="below-fold menu-element hidden edit-menu settings-menu add-module-menu update-menu classes-menu alert-menu main-menu power-menu"
+          >
+            <div class="menu-container">
+              <!-- main menu -->
+              <div
+                id="power-button"
+                class="menu-element hidden button main-menu"
+              >
+                <span class="fa fa-fw fa-power-off" aria-hidden="true"></span>
+                <span class="text">%%TRANSLATE:SHUTDOWN_MENU_NAME%%</span>
+                <span class="fa fa-fw fa-angle-right" aria-hidden="true"></span>
+              </div>
+              <div
+                id="edit-button"
+                class="menu-element hidden button main-menu"
+              >
+                <span class="stack fa-fw">
+                  <span
+                    class="fa fa-fw fa-television outer-label fa-stack-1x"
+                    aria-hidden="true"
+                  ></span>
+                  <span
+                    class="fa fa-fw fa-pencil inner-monitor-label fa-stack-1x"
+                    aria-hidden="true"
+                  ></span>
+                </span>
+                <span class="text">%%TRANSLATE:EDIT_MENU_NAME%%</span>
+                <span class="fa fa-fw fa-angle-right" aria-hidden="true"></span>
+              </div>
+              <div
+                id="settings-button"
+                class="menu-element hidden button main-menu"
+              >
+                <span class="fa fa-fw fa-wrench" aria-hidden="true"></span>
+                <span class="text">%%TRANSLATE:CONFIGURE_MENU_NAME%%</span>
+                <span class="fa fa-fw fa-angle-right" aria-hidden="true"></span>
+              </div>
+              <div
+                id="classes-button"
+                class="menu-element hidden button main-menu"
+              >
+                <span class="fa fa-fw fa-wrench" aria-hidden="true"></span>
+                <span class="text">Classes Menu</span>
+                <span class="fa fa-fw fa-angle-right" aria-hidden="true"></span>
+              </div>
+              <div
+                id="update-button"
+                class="menu-element hidden button main-menu"
+              >
+                <span class="fa fa-fw fa-toggle-up" aria-hidden="true"></span>
+                <span class="text">%%TRANSLATE:UPDATE_MENU_NAME%%</span>
+                <span class="fa fa-fw fa-angle-right" aria-hidden="true"></span>
+              </div>
+              <div
+                id="alert-button"
+                class="menu-element hidden button main-menu"
+              >
+                <span class="fa fa-fw fa-envelope-o" aria-hidden="true"></span>
+                <span class="text">%%TRANSLATE:ALERT_MENU_NAME%%</span>
+                <span class="fa fa-fw fa-angle-right" aria-hidden="true"></span>
+              </div>
+              <div
+                id="mirror-link-button"
+                class="menu-element hidden button main-menu"
+              >
+                <span
+                  class="fa fa-fw fa-external-link"
+                  aria-hidden="true"
+                ></span>
+                <span class="text">%%TRANSLATE:VIEW_MIRROR%%</span>
+              </div>
+              <!-- power menu -->
+              <div
+                id="shut-down-button"
+                class="menu-element hidden button power-menu"
+              >
+                <span class="fa fa-fw fa-power-off" aria-hidden="true"></span>
+                <span class="text">%%TRANSLATE:SHUTDOWN%%</span>
+              </div>
+              <div
+                id="restart-button"
+                class="menu-element hidden button power-menu"
+              >
+                <span class="fa fa-fw fa-refresh" aria-hidden="true"></span>
+                <span class="text">%%TRANSLATE:RESTART%%</span>
+              </div>
+              <div
+                id="restart-mm-button"
+                class="menu-element hidden button power-menu"
+              >
+                <span class="fa fa-fw fa-recycle" aria-hidden="true"></span>
+                <span class="text">%%TRANSLATE:RESTARTMM%%</span>
+              </div>
+              <div
+                id="refresh-mm-button"
+                class="menu-element hidden button power-menu"
+              >
+                <span class="fa fa-fw fa-globe" aria-hidden="true"></span>
+                <span class="text">%%TRANSLATE:REFRESHMM%%</span>
+              </div>
+              <div
+                id="monitor-on-button"
+                class="menu-element hidden button power-menu"
+              >
+                <span class="stack fa-fw">
+                  <span
+                    class="fa fa-fw fa-television outer-label fa-stack-1x"
+                    aria-hidden="true"
+                  ></span>
+                  <span
+                    class="fa fa-fw fa-check inner-monitor-label fa-stack-1x"
+                    aria-hidden="true"
+                  ></span>
+                </span>
+                <span class="text">%%TRANSLATE:MONITORON%%</span>
+              </div>
+              <div
+                id="monitor-off-button"
+                class="menu-element hidden button power-menu"
+              >
+                <span class="stack fa-fw">
+                  <span
+                    class="fa fa-fw fa-television outer-label fa-stack-1x"
+                    aria-hidden="true"
+                  ></span>
+                  <span
+                    class="fa fa-fw fa-close inner-monitor-label fa-stack-1x"
+                    aria-hidden="true"
+                  ></span>
+                </span>
+                <span class="text">%%TRANSLATE:MONITOROFF%%</span>
+              </div>
+              <div
+                id="fullscreen-button"
+                class="menu-element hidden button power-menu"
+              >
+                <span class="fa fa-fw fa-arrows-alt" aria-hidden="true"></span>
+                <span class="text">%%TRANSLATE:FULLSCREEN%%</span>
+              </div>
+              <div
+                id="minimize-button"
+                class="menu-element hidden button power-menu"
+              >
+                <span
+                  class="fa fa-fw fa-window-minimize"
+                  aria-hidden="true"
+                ></span>
+                <span class="text">%%TRANSLATE:MINIMIZE%%</span>
+              </div>
+              <div
+                id="devtools-button"
+                class="menu-element hidden button power-menu"
+              >
+                <span class="fa fa-fw fa-terminal" aria-hidden="true"></span>
+                <span class="text">%%TRANSLATE:DEVTOOLS%%</span>
+              </div>
+            </div>
+            <!-- below fold part of alert menu -->
+            <form
+              id="alert"
+              action=""
+              method="GET"
+              class="menu-element hidden alert-menu"
+            >
+              <input type="hidden" name="action" value="SHOW_ALERT" />
+              <div class="xsmall">%%TRANSLATE:FORM_TYPE%%</div>
+              <select name="type">
+                <option value="alert">%%TRANSLATE:FORM_ALERT%%</option>
+                <option value="notification">
+                  %%TRANSLATE:FORM_NOTIFICATION%%
+                </option>
+              </select>
+              <div class="xsmall">%%TRANSLATE:FORM_TITLE%%</div>
+              <input
+                type="text"
+                class="medium"
+                placeholder="%%TRANSLATE:FORM_TITLE_PLACEHOLDER%%"
+                name="title"
+              />
+              <div class="xsmall">%%TRANSLATE:FORM_MESSAGE%%</div>
+              <div>
+                <textarea
+                  class="medium"
+                  placeholder="%%TRANSLATE:FORM_MESSAGE_PLACEHOLDER%%"
+                  name="message"
+                ></textarea>
+              </div>
+              <div class="xsmall">%%TRANSLATE:FORM_SECONDS%%</div>
+              <input type="number" name="timer" value="4" />
+            </form>
+            <!-- below fold part of edit menu -->
+            <div
+              id="visible-modules-container"
+              class="result-list menu-element hidden edit-menu"
+            >
+              <div id="visible-modules-loading">
+                <span class="fa fa-fw fa-spinner fa-pulse"></span>
+                <span class="text">%%TRANSLATE:LOADING%%</span>
+              </div>
+              <div id="visible-modules-empty" class="hidden">
+                <span class="fa fa-fw fa-exclamation-circle"></span>
+                <span class="text">%%TRANSLATE:NO_MODULES_LOADED%%</span>
+              </div>
+              <div id="visible-modules-results" class="results small">
+                <!-- elements are inserted here -->
+              </div>
+            </div>
+            <!-- below fold part of classes menu -->
+            <div
+              id="classes-container"
+              class="result-list menu-element hidden classes-menu"
+            >
+              <div id="classes-loading">
+                <span class="fa fa-fw fa-spinner fa-pulse"></span>
+                <span class="text">%%TRANSLATE:LOADING%%</span>
+              </div>
+              <div id="classes-empty" class="hidden">
+                <span class="fa fa-fw fa-exclamation-circle"></span>
+                <span class="text">%%TRANSLATE:NO_MODULES_LOADED%%</span>
+              </div>
+              <div id="classes-results" class="results small">
+                <!-- elements are inserted here -->
+              </div>
+            </div>
+            <!-- below fold part of settings menu -->
+            <div
+              id="config-modules-container"
+              class="result-list menu-element hidden settings-menu"
+            >
+              <div id="config-modules-loading">
+                <span class="fa fa-fw fa-spinner fa-pulse"></span>
+                <span class="text">%%TRANSLATE:LOADING%%</span>
+              </div>
+              <div id="config-modules-empty" class="hidden">
+                <span class="fa fa-fw fa-exclamation-circle"></span>
+                <span class="text">%%TRANSLATE:NO_MODULES_LOADED%%</span>
+              </div>
+              <div id="config-modules-results" class="results small">
+                <!-- elements are inserted here -->
+              </div>
+            </div>
+            <!-- below fold part of add module menu -->
+            <div
+              id="add-module-container"
+              class="result-list menu-element hidden add-module-menu"
+              data-parent="settings"
+            >
+              <div id="add-module-loading">
+                <span class="fa fa-fw fa-spinner fa-pulse"></span>
+                <span class="text">%%TRANSLATE:LOADING%%</span>
+              </div>
+              <div id="add-module-empty" class="hidden">
+                <span class="fa fa-fw fa-exclamation-circle"></span>
+                <span class="text">%%TRANSLATE:NO_MODULES_LOADED%%</span>
+              </div>
+              <div id="add-module-results" class="results small">
+                <!-- elements are inserted here -->
+              </div>
+            </div>
+            <div
+              id="update-module-container"
+              class="result-list menu-element hidden update-menu"
+            >
+              <div id="update-module-loading">
+                <span class="fa fa-fw fa-spinner fa-pulse"></span>
+                <span class="text">%%TRANSLATE:LOADING%%</span>
+              </div>
+              <div id="update-module-empty" class="hidden">
+                <span class="fa fa-fw fa-exclamation-circle"></span>
+                <span class="text">%%TRANSLATE:NO_MODULES_LOADED%%</span>
+              </div>
+              <div id="update-module-results" class="results small">
+                <!-- elements are inserted here -->
+              </div>
+            </div>
+          </div>
+          <div id="load-error">
+            <span
+              class="fa fa-fw fa-exclamation-circle"
+              aria-hidden="true"
+            ></span>
+            <span class="text">%%TRANSLATE:LOAD_ERROR%%</span>
+            <a href="https://github.com/jopyth/MMM-Remote-Control/issues"
+              >%%TRANSLATE:ISSUE_LINK%%</a
+            >
+          </div>
+        </div>
+        <div id="result-overlay" class="overlay hidden"></div>
+        <div id="result" class="result hidden">
+          <div id="close-result">
+            <span class="fa fa-times-circle delete-button"></span>
+          </div>
+          <div id="result-contents">
+            <!-- content is inserted here -->
+          </div>
+        </div>
+        <div id="popup-container" class="popup">
+          <div id="close-popup">
+            <span class="fa fa-times-circle delete-button"></span>
+          </div>
+          <div id="popup-contents" class="popup-contents">
+            <!-- content is inserted here -->
+          </div>
+        </div>
+        <div id="success-popup" class="success-popup">
+          <span class="fa fa-fw fa-check-circle"></span>
+          <span class="text">%%TRANSLATE:DONE%%</span>
+        </div>
+      </div>
+    </div>
+    <script type="text/javascript" src="config/config.js"></script>
+    <script type="text/javascript" src="socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="js/socketclient.js"></script>
+    <script
+      type="text/javascript"
+      src="modules/MMM-Remote-Control/node_modules/showdown/dist/showdown.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="modules/MMM-Remote-Control/remote.js"
+    ></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+      // PWA Variables
+      let deferredPrompt = null;
+      const installBanner = document.getElementById('pwa-install-banner');
+      const installBtn = document.getElementById('pwa-install-btn');
+      const dismissBtn = document.getElementById('pwa-dismiss-btn');
+      const installedBadge = document.querySelector('.pwa-installed-badge');
+      
+      // Verifica se já está instalado
+      function checkIfInstalled() {
+        // Método 1: Verifica display mode
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+          console.log('[PWA] App está rodando em modo standalone');
+          showInstalledBadge();
+          return true;
+        }
+        
+        // Método 2: Verifica navigator.standalone (iOS)
+        if (window.navigator.standalone === true) {
+          console.log('[PWA] App está instalado (iOS)');
+          showInstalledBadge();
+          return true;
+        }
+        
+        // Método 3: Verifica localStorage
+        if (localStorage.getItem('pwa-installed') === 'true') {
+          console.log('[PWA] App marcado como instalado');
+          showInstalledBadge();
+          return true;
+        }
+        
+        return false;
+      }
+      
+      function showInstalledBadge() {
+        if (installedBadge) {
+          installedBadge.classList.add('visible');
+          // Esconde após 5 segundos
+          setTimeout(() => {
+            installedBadge.classList.remove('visible');
+          }, 5000);
+        }
+      }
+      
+      function showInstallBanner() {
+        if (installBanner && !checkIfInstalled()) {
+          // Verifica se o usuário já dispensou o banner
+          const dismissed = localStorage.getItem('pwa-banner-dismissed');
+          const dismissedTime = parseInt(dismissed || '0');
+          const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+          
+          // Mostra se nunca foi dispensado ou se já passou 24h
+          if (!dismissed || dismissedTime < oneDayAgo) {
+            installBanner.classList.add('visible');
+            console.log('[PWA] 📱 Banner de instalação exibido');
+          }
+        }
+      }
+      
+      // Detecta se é mobile
+      function isMobile() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      }
+      
+      // Mostra banner imediatamente em mobile (não espera beforeinstallprompt)
+      if (isMobile() && !checkIfInstalled()) {
+        console.log('[PWA] Dispositivo móvel detectado, mostrando banner...');
+        setTimeout(() => {
+          showInstallBanner();
+          
+          // Atualiza o texto do banner para mobile
+          const bannerText = document.getElementById('banner-text-instructions');
+          const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+          
+          if (bannerText) {
+            if (isIOS) {
+              bannerText.innerHTML = 'Toque em <strong>Instalar</strong> para ver instruções (Safari: use botão Compartilhar ↑)';
+            } else {
+              bannerText.innerHTML = 'Toque em <strong>Instalar</strong> abaixo para adicionar à tela inicial';
+            }
+          }
+        }, 2000); // Aguarda 2 segundos após carregar
+      }
+      
+      // Registra o Service Worker para PWA
+      const SW_ENABLED = true; // Reativado para PWA funcionar
+      
+      if (SW_ENABLED && 'serviceWorker' in navigator) {
+        console.log('[PWA] 🔵 Navegador suporta Service Worker');
+        
+        window.addEventListener('load', () => {
+          console.log('[PWA] 🔵 Página carregou, registrando Service Worker...');
+          
+          const swPath = '/modules/MMM-Remote-Control/service-worker.js';
+          console.log('[PWA] 🔵 Caminho do SW:', swPath);
+          
+          navigator.serviceWorker.register(swPath, { scope: '/' })
+            .then((registration) => {
+              console.log('[PWA] ✅ Service Worker REGISTRADO COM SUCESSO!');
+              console.log('[PWA] Scope:', registration.scope);
+              console.log('[PWA] Installing:', registration.installing);
+              console.log('[PWA] Waiting:', registration.waiting);
+              console.log('[PWA] Active:', registration.active);
+              
+              // Verifica se está instalado
+              checkIfInstalled();
+              
+              // Verifica atualizações a cada 60 segundos
+              setInterval(() => {
+                registration.update();
+              }, 60000);
+              
+              // Listener para atualizações
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                console.log('[PWA] Nova versão encontrada, instalando...');
+                
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('[PWA] Nova versão disponível! Recarregue a página para atualizar.');
+                    
+                    // Opcional: mostrar notificação de atualização
+                    if (confirm('Nova versão disponível! Deseja atualizar agora?')) {
+                      newWorker.postMessage({ type: 'SKIP_WAITING' });
+                      window.location.reload();
+                    }
+                  }
+                });
+              });
+            })
+            .catch((error) => {
+              console.error('[PWA] ❌ ERRO AO REGISTRAR Service Worker!');
+              console.error('[PWA] Erro:', error);
+              console.error('[PWA] Tipo:', error.name);
+              console.error('[PWA] Mensagem:', error.message);
+            });
+          
+          // Recarrega quando o controller muda (nova versão ativa)
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            console.log('[PWA] Controller mudou, recarregando...');
+            window.location.reload();
+          });
+        });
+      }
+      
+      // Detecta instalação do PWA
+      window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('[PWA] ✅ App PODE SER INSTALADO!');
+        // Previne o prompt automático
+        e.preventDefault();
+        // Salva o evento para uso posterior
+        deferredPrompt = e;
+        
+        // Mostra o banner de instalação
+        showInstallBanner();
+      });
+      
+      // Botão de instalar
+      if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+          if (!deferredPrompt) {
+            // Não tem o prompt automático - mostra instruções manuais
+            console.log('[PWA] Prompt não disponível, mostrando instruções manuais');
+            
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const isSafari = /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent);
+            
+            let instructions = '';
+            
+            if (isIOS || isSafari) {
+              instructions = `📱 INSTRUÇÕES PARA iOS/Safari:\n\n` +
+                `1. Toque no botão COMPARTILHAR (□↑) na barra inferior\n` +
+                `2. Role para baixo\n` +
+                `3. Toque em "Adicionar à Tela de Início"\n` +
+                `4. Toque em "Adicionar"\n` +
+                `5. Pronto! Abra pelo ícone na tela inicial`;
+            } else if (isAndroid) {
+              instructions = `📱 INSTRUÇÕES PARA ANDROID:\n\n` +
+                `1. Toque no menu (⋮) no canto superior direito\n` +
+                `2. Procure por "Instalar app" ou "Adicionar à tela inicial"\n` +
+                `3. Toque e confirme\n` +
+                `4. Pronto! Abra pelo ícone na tela inicial\n\n` +
+                `💡 IMPORTANTE: Abra pelo ÍCONE (não pelo navegador) para ter tela cheia!`;
+            } else {
+              instructions = `📱 INSTRUÇÕES:\n\n` +
+                `1. Toque no menu do navegador\n` +
+                `2. Procure "Adicionar à tela inicial" ou "Instalar"\n` +
+                `3. Confirme\n` +
+                `4. Abra pelo ícone na tela inicial`;
+            }
+            
+            alert(instructions);
+            return;
+          }
+          
+          // Mostra o prompt de instalação
+          deferredPrompt.prompt();
+          
+          // Aguarda a resposta do usuário
+          const { outcome } = await deferredPrompt.userChoice;
+          console.log(`[PWA] Usuário ${outcome === 'accepted' ? 'ACEITOU ✅' : 'RECUSOU ❌'} a instalação`);
+          
+          if (outcome === 'accepted') {
+            // Esconde o banner
+            installBanner.classList.remove('visible');
+            // Marca como instalado
+            localStorage.setItem('pwa-installed', 'true');
+          }
+          
+          // Limpa o prompt
+          deferredPrompt = null;
+        });
+      }
+      
+      // Botão de dispensar
+      if (dismissBtn) {
+        dismissBtn.addEventListener('click', () => {
+          installBanner.classList.remove('visible');
+          // Salva que o usuário dispensou
+          localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
+          console.log('[PWA] Banner dispensado pelo usuário');
+        });
+      }
+      
+      // Detecta quando o app foi instalado
+      window.addEventListener('appinstalled', () => {
+        console.log('[PWA] 🎉 App instalado com sucesso!');
+        installBanner.classList.remove('visible');
+        localStorage.setItem('pwa-installed', 'true');
+        showInstalledBadge();
+        deferredPrompt = null;
+      });
+      
+      // Monitora mudança de display mode
+      window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+        if (e.matches) {
+          console.log('[PWA] App agora está em modo standalone');
+          showInstalledBadge();
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,100 @@
+.weather .weathericon,
+.weather .fa-home {
+  font-size: 75%;
+  line-height: 65px;
+  display: inline-block;
+  transform: translate(0, -3px);
+}
+
+.weather .humidity-icon {
+  padding-right: 4px;
+}
+
+.weather .humidity-padding {
+  padding-bottom: 6px;
+}
+
+.weather .day {
+  padding-left: 0;
+  padding-right: 25px;
+}
+
+.weather .weather-icon {
+  padding-right: 30px;
+  text-align: center;
+}
+
+.weather .min-temp {
+  padding-left: 20px;
+  padding-right: 0;
+}
+
+.weather .precipitation-amount,
+.weather .precipitation-prob,
+.weather .humidity-hourly,
+.weather .uv-index {
+  padding-left: 20px;
+  padding-right: 0;
+}
+
+.weather tr .weathericon {
+  line-height: 25px;
+}
+
+.weather tr.colored .min-temp {
+  color: #bcddff;
+}
+
+.weather tr.colored .max-temp {
+  color: #ff8e99;
+}
+
+/* Badges compactos */
+.weather .uv-badge, .weather .aqi-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  margin-left: 6px;
+}
+.weather .uv-badge .wi, .weather .aqi-badge .wi { opacity: .8; }
+.weather .aqi-badge .fa { opacity: .8; }
+.weather .aqi-badge .aqi-label, .weather .uv-badge .uv-label { opacity: .8; margin-right: 2px; }
+/* Cores AQI 1..5 (OpenWeather escala 1=boa, 5=muito ruim) */
+.weather .aqi-badge.aqi-1 { background: rgba(76,175,80,0.25); }
+.weather .aqi-badge.aqi-2 { background: rgba(139,195,74,0.25); }
+.weather .aqi-badge.aqi-3 { background: rgba(255,193,7,0.25); }
+.weather .aqi-badge.aqi-4 { background: rgba(255,152,0,0.25); }
+.weather .aqi-badge.aqi-5 { background: rgba(244,67,54,0.25); }
+
+/* Painel horário compacto */
+.weather .compact-hourly { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+.weather .compact-hourly .h-item { display: inline-flex; align-items: center; gap: 5px; }
+.weather .compact-hourly .h-time { opacity: .7; }
+.weather .compact-hourly .h-pop { opacity: .7; }
+
+/* Barra UV inferior */
+.weather .uv-bar { margin-top: 6px; }
+.weather .uv-bar .uv-bar-head { display:flex; align-items:center; gap:6px; margin-bottom:2px; }
+.weather .uv-bar .uv-label { opacity:.8; }
+.weather .uv-bar .uv-track { position: relative; height: 6px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.weather .uv-bar .uv-fill { position:absolute; left:0; top:0; bottom:0; width:0; transition: width .6s ease; }
+.weather .uv-bar .uv-fill.uv-low { background: #4caf50; }
+.weather .uv-bar .uv-fill.uv-moderate { background: #ffeb3b; }
+.weather .uv-bar .uv-fill.uv-high { background: #ff9800; }
+.weather .uv-bar .uv-fill.uv-very-high { background: #f44336; }
+.weather .uv-bar .uv-fill.uv-extreme { background: #9c27b0; }
+
+/* Barra AQI inferior */
+.weather .aqi-bar { margin-top: 6px; }
+.weather .aqi-bar .aqi-bar-head { display:flex; align-items:center; gap:6px; margin-bottom:2px; }
+.weather .aqi-bar .aqi-label { opacity:.8; }
+.weather .aqi-bar .aqi-track { position: relative; height: 6px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.weather .aqi-bar .aqi-fill { position:absolute; left:0; top:0; bottom:0; width:0; transition: width .6s ease; }
+.weather .aqi-bar .aqi-fill.aqi-good { background: #4caf50; }
+.weather .aqi-bar .aqi-fill.aqi-fair { background: #8bc34a; }
+.weather .aqi-bar .aqi-fill.aqi-moderate { background: #ffc107; }
+.weather .aqi-bar .aqi-fill.aqi-poor { background: #ff9800; }
+.weather .aqi-bar .aqi-fill.aqi-very-poor { background: #f44336; }

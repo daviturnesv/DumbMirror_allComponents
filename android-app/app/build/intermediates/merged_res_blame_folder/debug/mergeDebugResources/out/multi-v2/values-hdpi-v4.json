@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.dumbmirror.remote.app-mergeDebugResources-68:/values-hdpi-v4/values-hdpi-v4.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Davig\\.gradle\\caches\\9.0-milestone-1\\transforms\\1b58f3c3d200597fcaa4e79fa31cb9bc\\transformed\\appcompat-1.6.1\\res\\values-hdpi-v4\\values-hdpi-v4.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "6",
+                        "endColumns": "13",
+                        "endOffsets": "327"
+                    }
+                }
+            ]
+        }
+    ]
+}

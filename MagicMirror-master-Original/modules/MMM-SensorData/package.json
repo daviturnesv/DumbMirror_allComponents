@@ -1,0 +1,21 @@
+{
+  "name": "mmm-sensordata",
+  "version": "1.0.0",
+  "description": "MagicMirror² module to display sensor data from an ESP32 via MQTT.",
+  "main": "MMM-SensorData.js",
+  "keywords": [
+    "magicmirror",
+    "module",
+    "mqtt",
+    "sensors",
+    "esp32"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "mqtt": "^5.3.5"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^12.2.0"
+  }
+}

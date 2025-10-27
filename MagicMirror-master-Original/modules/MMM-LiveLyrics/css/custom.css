@@ -1,0 +1,46 @@
+
+/* Mantém o cartão de letras ancorado ao lado do player do OnSpotify sem cobrir o glow.
+   Além disso reposiciona o seletor de páginas dentro do cartão de mídia. */
+.MMM-LiveLyrics.page-media {
+	--LILY-VIEW-MARGIN-L: calc(var(--ONSP-INTERNAL-PLAYER-SIZE-WIDTH) + var(--ll-gap-horizontal));
+	--LILY-VIEW-MARGIN-R: var(--ll-gap-right);
+	--LILY-VIEW-MARGIN-T: var(--ll-gap-top);
+	--LILY-VIEW-MARGIN-B: var(--ll-gap-bottom);
+	--LILY-BACKDROP-MARGIN-L: var(--LILY-VIEW-MARGIN-L);
+	--LILY-BACKDROP-MARGIN-R: var(--LILY-VIEW-MARGIN-R);
+	--LILY-BACKDROP-MARGIN-T: var(--LILY-VIEW-MARGIN-T);
+	--LILY-BACKDROP-MARGIN-B: var(--LILY-VIEW-MARGIN-B);
+}
+
+.MMM-LiveLyrics.page-media .LILY-Base .main .sub .view .media {
+	position: relative;
+}
+
+.LILY-Base .main .container.meta-present .meta {
+	font-size: 1.05em;
+	opacity: 0.85;
+	line-height: 1.45;
+	margin-bottom: 1.4em;
+	white-space: pre-line;
+}
+
+.LILY-Base .main .container.meta-present .ly {
+	margin-top: 0;
+}
+
+.LILY-Base {
+	justify-content: flex-end;
+	padding-bottom: 0;
+}
+
+.LILY-Base .main {
+	height: calc(100vh - var(--ll-gap-top) - var(--ll-gap-bottom));
+	max-height: calc(100vh - var(--ll-gap-top) - var(--ll-gap-bottom));
+	margin: 0 auto;
+}
+
+.LILY-Base .main .sub,
+.LILY-Base .main .view,
+.LILY-Base .main .container {
+	max-height: inherit;
+}

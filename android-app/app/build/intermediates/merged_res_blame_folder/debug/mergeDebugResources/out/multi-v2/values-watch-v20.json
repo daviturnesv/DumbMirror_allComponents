@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.dumbmirror.remote.app-mergeDebugResources-68:/values-watch-v20/values-watch-v20.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Davig\\.gradle\\caches\\9.0-milestone-1\\transforms\\1b58f3c3d200597fcaa4e79fa31cb9bc\\transformed\\appcompat-1.6.1\\res\\values-watch-v20\\values-watch-v20.xml",
+                    "from": {
+                        "startLines": "2,5,8",
+                        "startColumns": "4,4,4",
+                        "startOffsets": "55,214,385",
+                        "endLines": "4,7,10",
+                        "endColumns": "12,12,12",
+                        "endOffsets": "209,380,553"
+                    }
+                }
+            ]
+        }
+    ]
+}

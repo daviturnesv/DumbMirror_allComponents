@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Desregistrar Service Worker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    button {
+      background: #ff4444;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+    button:hover {
+      background: #cc0000;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 15px;
+      background: #333;
+      border-radius: 5px;
+      min-height: 100px;
+    }
+    .success { color: #4CAF50; }
+    .error { color: #ff4444; }
+  </style>
+</head>
+<body>
+  <h1>🧹 Desregistrar Service Worker</h1>
+  <p>Use esta página para remover completamente o Service Worker do DumbMirror.</p>
+  
+  <button onclick="unregisterAll()">🗑️ Desregistrar TODOS os Service Workers</button>
+  <button onclick="clearCache()">🧹 Limpar TODO o Cache</button>
+  <button onclick="doEverything()">💥 FAZER TUDO (Desregistrar + Limpar)</button>
+  
+  <div id="status">
+    <p>Clique em um botão acima para começar...</p>
+  </div>
+
+  <script>
+    const status = document.getElementById('status');
+    
+    function log(msg, type = 'info') {
+      const p = document.createElement('p');
+      p.textContent = msg;
+      if (type === 'success') p.className = 'success';
+      if (type === 'error') p.className = 'error';
+      status.appendChild(p);
+      console.log(msg);
+    }
+    
+    async function unregisterAll() {
+      status.innerHTML = '<p>🔍 Procurando Service Workers...</p>';
+      
+      if (!navigator.serviceWorker) {
+        log('❌ Navegador não suporta Service Workers', 'error');
+        return;
+      }
+      
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        
+        if (registrations.length === 0) {
+          log('✅ Nenhum Service Worker encontrado!', 'success');
+          return;
+        }
+        
+        log(`📋 Encontrados ${registrations.length} Service Worker(s)`);
+        
+        for (const registration of registrations) {
+          log(`🗑️ Desregistrando: ${registration.scope}`);
+          const success = await registration.unregister();
+          
+          if (success) {
+            log(`✅ Desregistrado: ${registration.scope}`, 'success');
+          } else {
+            log(`❌ Falha ao desregistrar: ${registration.scope}`, 'error');
+          }
+        }
+        
+        log('🎉 CONCLUÍDO! Recarregue a página.', 'success');
+        
+      } catch (error) {
+        log(`❌ Erro: ${error.message}`, 'error');
+      }
+    }
+    
+    async function clearCache() {
+      status.innerHTML = '<p>🔍 Procurando caches...</p>';
+      
+      if (!('caches' in window)) {
+        log('❌ API de Cache não disponível', 'error');
+        return;
+      }
+      
+      try {
+        const cacheNames = await caches.keys();
+        
+        if (cacheNames.length === 0) {
+          log('✅ Nenhum cache encontrado!', 'success');
+          return;
+        }
+        
+        log(`📋 Encontrados ${cacheNames.length} cache(s)`);
+        
+        for (const cacheName of cacheNames) {
+          log(`🗑️ Deletando cache: ${cacheName}`);
+          const success = await caches.delete(cacheName);
+          
+          if (success) {
+            log(`✅ Cache deletado: ${cacheName}`, 'success');
+          } else {
+            log(`❌ Falha ao deletar: ${cacheName}`, 'error');
+          }
+        }
+        
+        log('🎉 CONCLUÍDO! Cache limpo.', 'success');
+        
+      } catch (error) {
+        log(`❌ Erro: ${error.message}`, 'error');
+      }
+    }
+    
+    async function doEverything() {
+      status.innerHTML = '<p>💥 Limpando TUDO...</p>';
+      await unregisterAll();
+      await clearCache();
+      log('');
+      log('🎉 TUDO LIMPO! Agora:', 'success');
+      log('1. Feche esta aba');
+      log('2. Recarregue a página do Remote Control');
+      log('3. O SW não deve mais aparecer no DevTools');
+    }
+    
+    // Verifica automaticamente ao carregar
+    window.addEventListener('load', async () => {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      const cacheNames = await caches.keys();
+      
+      if (registrations.length > 0 || cacheNames.length > 0) {
+        log(`⚠️ Detectados: ${registrations.length} SW(s) + ${cacheNames.length} cache(s)`, 'error');
+      } else {
+        log('✅ Nenhum SW ou cache ativo!', 'success');
+      }
+    });
+  </script>
+</body>
+</html>

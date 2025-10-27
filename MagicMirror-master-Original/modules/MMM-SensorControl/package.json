@@ -1,0 +1,14 @@
+{
+	"name": "mmm-sensorcontrol",
+	"version": "1.0.0",
+	"description": "Bridge module to control MMM-SensorData via voice or gesture notifications.",
+	"main": "MMM-SensorControl.js",
+	"keywords": [
+		"magicmirror",
+		"sensor",
+		"voice",
+		"gesture"
+	],
+	"author": "",
+	"license": "MIT"
+}

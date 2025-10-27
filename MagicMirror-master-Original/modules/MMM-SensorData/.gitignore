@@ -1,0 +1,14 @@
+# node_modules de cada módulo customizado
+node_modules/
+node_modules_old/
+
+# Cache e arquivos temporários
+*.db
+*.db-shm
+*.db-wal
+*.csv
+voice_cmd.txt
+
+# Arquivos de build
+*.pyc
+__pycache__/

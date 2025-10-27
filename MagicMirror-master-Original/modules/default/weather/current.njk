@@ -1,0 +1,209 @@
+{% macro humidity() %}
+    {% if current.humidity %}
+        <span class="humidity"><span>{{ current.humidity | decimalSymbol }}</span><sup>&nbsp;<i class="wi wi-humidity humidity-icon"></i></sup></span>
+    {% endif %}
+{% endmacro %}
+{% macro dewPoint() %}
+    {% if current.dewPoint is defined and current.dewPoint != null %}
+        <span class="dew-point"><span>{{ current.dewPoint | roundValue | unit("temperature") | decimalSymbol }}</span><sup>&nbsp;Pto Orvalho</sup></span>
+    {% endif %}
+{% endmacro %}
+{% macro visibility() %}
+    {% if current.visibility is defined and current.visibility != null %}
+        <span class="visibility"><span>{{ current.visibility | unit("visibility") | decimalSymbol }}</span><sup>&nbsp;Visib.</sup></span>
+    {% endif %}
+{% endmacro %}
+{% macro pressure() %}
+    {% if current.pressure %}
+        <span class="pressure"><span>{{ current.pressure | decimalSymbol }}</span><sup>&nbsp;hPa</sup></span>
+    {% endif %}
+{% endmacro %}
+{% macro uvBadge() %}
+    {% if config.showUVIndex and current.uv_index is defined and current.uv_index != null %}
+        <span class="uv-badge xsmall">
+            <i class="wi wi-hot"></i>
+            <span class="uv-label">UV</span>
+            <span class="uv-val">{{ current.uv_index | roundValue | decimalSymbol }}</span>
+        </span>
+    {% endif %}
+{% endmacro %}
+{% macro uvBar() %}
+    {% if config.showUVIndex and current.uv_index is defined and current.uv_index != null %}
+        {% set u = current.uv_index %}
+        {% if u < 0 %}{% set u = 0 %}{% endif %}
+        {% if u > 12 %}{% set u = 12 %}{% endif %}
+        {% set pct = (u / 12.0) * 100 %}
+        {% set level = 'low' %}
+        {% if u >= 3 and u <= 5 %}{% set level = 'moderate' %}
+        {% elif u >= 6 and u <= 7 %}{% set level = 'high' %}
+        {% elif u >= 8 and u <= 10 %}{% set level = 'very-high' %}
+        {% elif u >= 11 %}{% set level = 'extreme' %}{% endif %}
+        <div class="uv-bar xsmall">
+            <div class="uv-bar-head">
+                <i class="wi wi-hot"></i>
+                <span class="uv-label">UV</span>
+                <span class="uv-val">{{ u | roundValue | decimalSymbol }}</span>
+            </div>
+            <div class="uv-track">
+                <div class="uv-fill uv-{{ level }}" style="width: {{ pct }}%"></div>
+            </div>
+        </div>
+    {% endif %}
+{% endmacro %}
+{% macro aqiBar() %}
+    {% if config.showAQIIndex and air and air.aqi %}
+        {% set aq = air.aqi %}
+        {% if aq < 1 %}{% set aq = 1 %}{% endif %}
+        {% if aq > 5 %}{% set aq = 5 %}{% endif %}
+        {% set pct = (aq / 5.0) * 100 %}
+        {% set level = 'good' %}
+        {% if aq == 2 %}{% set level = 'fair' %}
+        {% elif aq == 3 %}{% set level = 'moderate' %}
+        {% elif aq == 4 %}{% set level = 'poor' %}
+        {% elif aq >= 5 %}{% set level = 'very-poor' %}{% endif %}
+        <div class="aqi-bar xsmall">
+            <div class="aqi-bar-head">
+                <i class="fa fa-leaf"></i>
+                <span class="aqi-label">AQI</span>
+                <span class="aqi-val">{{ aq }}</span>
+            </div>
+            <div class="aqi-track">
+                <div class="aqi-fill aqi-{{ level }}" style="width: {{ pct }}%"></div>
+            </div>
+        </div>
+    {% endif %}
+{% endmacro %}
+{% macro aqiBadge() %}
+    {% if config.showAQIIndex and air and air.aqi %}
+        {% set aclass = 'aqi-' + air.aqi %}
+        <span class="aqi-badge xsmall {{ aclass }}">
+            <i class="fa fa-leaf"></i>
+            <span class="aqi-label">AQI</span>
+            <span class="aqi-val">{{ air.aqi }}</span>
+        </span>
+    {% endif %}
+{% endmacro %}
+{% if current %}
+    {% if not config.onlyTemp %}
+        <div class="normal medium">
+            <span class="wi wi-strong-wind dimmed"></span>
+            <span>
+                {{ current.windSpeed | unit("wind") | round }}
+                {% if config.showWindDirection %}
+                    <sup>
+                        {% if config.showWindDirectionAsArrow %}
+                            <i class="fas fa-long-arrow-alt-down" style="transform:rotate({{ current.windFromDirection }}deg)"></i>
+                        {% else %}
+                            {{ current.cardinalWindDirection() | translate }}
+                        {% endif %}
+                        &nbsp;
+                    </sup>
+                {% endif %}
+            </span>
+            {% if config.showHumidity === "wind" %}
+                {{ humidity() }}
+            {% endif %}
+            {% if config.showSun %}
+                <span class="wi dimmed wi-{{ current.nextSunAction() }}"></span>
+                <span>
+                    {% if current.nextSunAction() === "sunset" %}
+                        {{ current.sunset | formatTime }}
+                    {% else %}
+                        {{ current.sunrise | formatTime }}
+                    {% endif %}
+                </span>
+            {% endif %}
+            {% if config.showPressure %}
+                <span class="wi dimmed wi-barometer"></span>
+                {{ pressure() }}
+            {% endif %}
+        </div>
+    {% endif %}
+    <div class="large">
+        {% if config.showIndoorTemperature and indoor.temperature or config.showIndoorHumidity and indoor.humidity %}
+            <span class="medium fas fa-home"></span>
+            <span style="display: inline-block">
+                    {% if config.showIndoorTemperature and indoor.temperature %}
+                            <sup class="small" style="position: relative; display: block; text-align: left;">
+                                    <span>
+                                        {{ indoor.temperature | roundValue | unit("temperature") | decimalSymbol }}
+                                    </span>
+                            </sup>
+                    {% endif %}
+                    {% if config.showIndoorHumidity and indoor.humidity %}
+                            <sub class="small" style="position: relative; display: block; text-align: left;">
+                                    <span>
+                                            {{ indoor.humidity | roundValue | unit("humidity") | decimalSymbol }}
+                                    </span>
+                            </sub>
+                    {% endif %}
+            </span>
+        {% endif %}
+        <span class="light wi weathericon wi-{{ current.weatherType }}"></span>
+        <span class="light bright">{{ current.temperature | roundValue | unit("temperature") | decimalSymbol }}</span>
+        {% if config.showHumidity === "temp" %}
+            <span class="medium bright">{{ humidity() }}</span>
+        {% endif %}
+    </div>
+    {% if (config.showDewPoint or config.showVisibility) and not config.onlyTemp %}
+        <div class="normal xsmall dimmed">
+            {% if config.showDewPoint %}
+                <span class="wi wi-raindrop"></span>
+                {{ dewPoint() }}
+            {% endif %}
+            {% if config.showVisibility %}
+                &nbsp;&nbsp;<span class="wi wi-day-fog"></span>
+                {{ visibility() }}
+            {% endif %}
+        </div>
+    {% endif %}
+    {% if (config.showFeelsLike or config.showPrecipitationAmount or config.showPrecipitationProbability) and not config.onlyTemp %}
+        <div class="normal medium feelslike">
+            {% if config.showFeelsLike %}
+                <span class="dimmed">
+                    {% if config.showHumidity === "feelslike" %}
+                        {{ humidity() }}
+                    {% endif %}
+                    {{ "FEELS" | translate({DEGREE: current.feelsLike() | roundValue | unit("temperature") | decimalSymbol }) }}
+                </span>
+                <br />
+            {% endif %}
+            {% if config.showPrecipitationAmount and current.precipitationAmount %}
+                <span class="dimmed">
+                    <span class="precipitationLeadText">{{ "PRECIP_AMOUNT" | translate }}</span> {{ current.precipitationAmount | unit("precip", current.precipitationUnits) }}
+                </span>
+                <br />
+            {% endif %}
+            {% if config.showPrecipitationProbability and current.precipitationProbability %}
+                <span class="dimmed">
+                    <span class="precipitationLeadText">{{ "PRECIP_POP" | translate }}</span> {{ current.precipitationProbability }}%
+                </span>
+            {% endif %}
+        </div>
+    {% endif %}
+    {% if config.showHumidity === "below" %}
+        <span class="medium dimmed">{{ humidity() }}</span>
+    {% endif %}
+
+    {% if config.compactHourlyInCurrent and hourly and hourly.length > 0 %}
+        <div class="xsmall dimmed compact-hourly">
+            {% set limit = config.compactHourlyHours or 6 %}
+            {% for h in hourly | slice(0, limit) %}
+                <span class="h-item">
+                    <span class="h-time">{{ h.date | formatTime }}</span>
+                    <i class="wi wi-{{ h.weatherType }}"></i>
+                    <span class="h-temp">{{ h.temperature | roundValue | unit("temperature") | decimalSymbol }}</span>
+                    {% if h.precipitationProbability %}
+                        <span class="h-pop">{{ h.precipitationProbability | roundValue }}%</span>
+                    {% endif %}
+                </span>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {{ uvBar() }}
+    {{ aqiBar() }}
+{% else %}
+    <div class="dimmed light small">{{ "LOADING" | translate }}</div>
+{% endif %}
+<!-- Uncomment the line below to see the contents of the `current` object. -->
+<!-- <div style="word-wrap:break-word" class="xsmall dimmed">{{current | dump}}</div> -->

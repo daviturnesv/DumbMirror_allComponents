@@ -1,0 +1,15 @@
+node_modules/
+.venv/
+.env
+npm-debug.log*
+.DS_Store
+*.log
+coverage/
+/dist/
+/build/
+/tmp/
+*.sqlite
+*.db
+.idea/
+.vscode/
+.serena/

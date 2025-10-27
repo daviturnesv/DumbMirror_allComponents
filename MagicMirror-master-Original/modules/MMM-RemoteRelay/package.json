@@ -1,0 +1,9 @@
+{
+  "name": "mmm-remoterelay",
+  "version": "0.1.0",
+  "main": "MMM-RemoteRelay.js",
+  "type": "commonjs",
+  "dependencies": {
+    "socket.io-client": "^4.7.5"
+  }
+}

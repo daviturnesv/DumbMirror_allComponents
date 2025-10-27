@@ -1,0 +1,237 @@
+/* === Base Container =================================================== */
+.MMM-SensorData {
+  --sd-accent: #4fcf83;
+  --sd-accent-soft: rgba(79,207,131,0.15);
+  --sd-accent-grad: linear-gradient(135deg,#49b878,#4fcf83 55%,#66d894);
+  --sd-fg: #fafafa;
+  --sd-fg-dim: #cfd2d5;
+  --sd-fg-faint: #889099;
+  --sd-bg-panel: rgba(255,255,255,0.04);
+  --sd-bg-panel-alt: rgba(255,255,255,0.06);
+  --sd-danger: #ff6573;
+  --sd-warn: #ffb347;
+  --sd-info: #5fb3ff;
+  /* Escala específica para o resumo do relatório (texto explicativo) */
+  --sd-summary-scale: 1.1;
+  /* Escala manual do módulo (multiplica tudo). Aumenta legibilidade sem alargar o módulo. */
+  --sd-ui-scale: 1.2;
+  /*
+   * Escala automática baseada na largura da viewport.
+   *  - Em telas grandes (>=1920px) mantemos 1
+   *  - Em telas menores encolhe até 0.72 (ex ~1366px)
+   * Se o utilizador ajustar a escala via comando de voz (reportScale),
+   * esse valor será multiplicado depois no painel de relatório.
+   */
+  /* maior piso para evitar textos minúsculos em telas menores */
+  --sd-auto-scale: clamp(0.95, 100vw / 1920, 1.05);
+  font-size: calc(16px * var(--sd-auto-scale) * var(--sd-ui-scale));
+  line-height: 1.35;
+  color: var(--sd-fg);
+  text-align: left;
+  font-weight: 400;
+  letter-spacing: .2px;
+  /* limite global de largura do módulo: no máximo 30% da tela */
+  max-width: clamp(280px, 30vw, 420px);
+}
+
+/* === Status Bar ======================================================= */
+.MMM-SensorData .sensor-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: calc(13px * var(--sd-ui-scale));
+  padding: 4px 8px 3px;
+  background: var(--sd-bg-panel);
+  border-radius: 6px;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  font-weight: 600;
+}
+.MMM-SensorData .sensor-status .status-icon { font-size: calc(14px * var(--sd-ui-scale)); opacity:.9; }
+.MMM-SensorData .sensor-status.status-connected { color: var(--sd-accent); }
+.MMM-SensorData .sensor-status.status-connecting { color: var(--sd-warn); }
+.MMM-SensorData .sensor-status.status-disconnected { color: var(--sd-danger); }
+.MMM-SensorData .sensor-status.status-inactive { color: var(--sd-info); }
+
+/* === Sensor Rows ====================================================== */
+.MMM-SensorData .sensor-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  position: relative;
+  padding: 4px 6px 4px 2px;
+  border-left: 3px solid transparent;
+  transition: background .25s, border-color .25s;
+}
+.MMM-SensorData .sensor-row:hover { background: var(--sd-bg-panel); }
+.MMM-SensorData .sensor-row.stale { opacity: .55; }
+
+.MMM-SensorData .sensor-icon {
+  font-size: calc(22px * var(--sd-ui-scale));
+  width: 24px;
+  text-align: center;
+  color: var(--sd-accent);
+  filter: drop-shadow(0 0 2px rgba(79,207,131,0.45));
+}
+.MMM-SensorData .sensor-value {
+  font-weight: 500;
+  font-size: calc(20px * var(--sd-ui-scale));
+  letter-spacing: .5px;
+  text-shadow: 0 0 4px rgba(0,0,0,.45);
+}
+
+/* Secondary info rows */
+.MMM-SensorData .sensor-row.info-row { font-size: calc(12px * var(--sd-ui-scale)); margin-top: 4px; padding: 3px 6px; }
+.MMM-SensorData .sensor-row.info-row .sensor-info { color: var(--sd-fg-faint); }
+
+/* Report panel styling */
+.MMM-SensorData .sensor-row.info-row.report-panel {
+  background: var(--sd-bg-panel-alt);
+  border-radius: 5px;
+  margin-top: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--sd-fg-dim);
+}
+.MMM-SensorData .sensor-row.info-row.report-panel strong { color: var(--sd-accent); }
+
+/* === New Report Panel (modern) ====================================== */
+.MMM-SensorData .sd-report-panel { 
+  --gap: 6px;
+  /* valor vindo do JS (voz) é armazenado em --sd-report-scale no wrapper; aqui capturamos e combinamos */
+  --sd-user-report-scale: var(--sd-report-scale, 1);
+  --sd-effective-report-scale: calc(var(--sd-user-report-scale) * var(--sd-auto-scale));
+  /* painel do relatório também respeita a largura do módulo (máx 30vw) */
+  --sd-report-max-width: clamp(280px, 30vw, 420px);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: clamp(10px, 0.9vw, 14px) clamp(12px, 1vw, 16px) clamp(12px, 1.1vw, 16px);
+  /* base maior para melhorar legibilidade do relatório; alinhar com fonte global do MM quando maior */
+  font-size: max(calc(var(--mm-base-font) * 1.0), calc(16px * var(--sd-effective-report-scale)));
+  line-height: 1.28;
+  margin-top: 8px;
+  box-shadow: 0 4px 14px -6px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,0.04);
+  max-width: var(--sd-report-max-width);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden; /* previne expansão horizontal por elementos internos */
+  align-self: flex-start; /* evita que flex containers parent estiquem o painel */
+}
+.MMM-SensorData .sd-report-head { display:flex; justify-content:space-between; align-items:center; font-size:max(calc(var(--mm-base-font) * 1.05), 15px); font-weight:700; letter-spacing:.6px; margin-bottom:8px; }
+.MMM-SensorData .sd-report-title { color: var(--sd-accent); text-transform:uppercase; }
+.MMM-SensorData .sd-report-ts { color: var(--sd-fg-faint); font-weight:400; }
+.MMM-SensorData .sd-report-meta { display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color: var(--sd-fg-faint); margin-bottom:8px; }
+.MMM-SensorData .sd-report-meta .sd-ds.on { color: var(--sd-accent); }
+.MMM-SensorData .sd-report-meta .sd-ds.off { color: var(--sd-fg-faint); opacity:.7; }
+.MMM-SensorData .sd-cards { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; margin-bottom:8px; }
+  .MMM-SensorData .sd-card { position:relative; background: var(--sd-bg-panel); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:9px 10px 10px; display:flex; flex-direction:column; gap:6px; min-width:140px; }
+  .MMM-SensorData .sd-card-label { font-size:max(calc(var(--mm-base-font) * 0.95), 12px); text-transform:uppercase; letter-spacing:1px; color:var(--sd-fg-faint); font-weight:700; }
+  .MMM-SensorData .sd-card-main { font-size:max(calc(var(--mm-base-font) * 1.25), calc(24px * var(--sd-effective-report-scale))); font-weight:700; letter-spacing:.5px; }
+  .MMM-SensorData .sd-card-sub { display:flex; flex-wrap:wrap; gap:6px; font-size:calc(12px * var(--sd-effective-report-scale)); color:var(--sd-fg-faint); font-weight:500; }
+.MMM-SensorData .sd-temp-card .sd-card-main { color:#ffb347; }
+.MMM-SensorData .sd-hum-card .sd-card-main { color:#5f9eff; }
+.MMM-SensorData .sd-light-card .sd-card-main { color:#f4e860; }
+.MMM-SensorData .sd-motion-card .sd-card-main { color:#b180ff; }
+.MMM-SensorData .sd-groups { margin-top:4px; }
+  .MMM-SensorData .sd-groups table { width:100%; border-collapse:collapse; font-size:max(var(--mm-base-font), calc(14px * var(--sd-effective-report-scale))); }
+  .MMM-SensorData .sd-groups thead th { text-align:left; font-weight:700; padding:6px 6px; font-size:max(calc(var(--mm-base-font) * 0.95), calc(12px * var(--sd-effective-report-scale))); letter-spacing:1px; text-transform:uppercase; color:var(--sd-fg-faint); }
+  .MMM-SensorData .sd-groups tbody td { padding:4px 5px; border-top:1px solid rgba(255,255,255,0.05); }
+.MMM-SensorData .sd-groups tbody tr:nth-child(odd) { background:rgba(255,255,255,0.03); }
+.MMM-SensorData .sd-groups tbody tr:hover { background:rgba(255,255,255,0.07); }
+  .MMM-SensorData .sd-more { font-size:max(calc(var(--mm-base-font) * 0.95), calc(12px * var(--sd-effective-report-scale))); margin-top:6px; color:var(--sd-fg-faint); }
+  .MMM-SensorData .sd-report-min { font-size:max(calc(var(--mm-base-font) * 0.95), 13px); }
+  /* AI summary block */
+  /* Resumo: forçar a ficar >= previsão do tempo (usa --mm-base-font) */
+  .MMM-SensorData .sd-report-panel .sd-ai-summary { margin-top:10px; font-size: calc(var(--sd-summary-scale) * var(--mm-base-font, 16px)) !important; line-height:1.6; background:rgba(0,0,0,0.25); padding:12px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); color:var(--sd-fg-dim); position:relative; white-space: normal; word-break: break-word; overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto; }
+
+/* Em telas estreitas, volte para 1 coluna nos cards para evitar aperto */
+@media (max-width: 360px) {
+  .MMM-SensorData .sd-cards { grid-template-columns: 1fr; }
+}
+
+/* Em retrato, escale com base na altura: evita encolher quando a largura é pequena */
+@media (orientation: portrait) {
+  /* em retrato: escalar por altura e manter limite de 30% da largura */
+  .MMM-SensorData { --sd-auto-scale: clamp(1.05, 100vh / 1920, 1.2); max-width: clamp(280px, 30vw, 460px); }
+  .MMM-SensorData .sd-report-panel { --sd-report-max-width: clamp(280px, 30vw, 460px); }
+}
+  .MMM-SensorData .sd-ai-summary.sd-ai-loading { opacity:.8; font-style:italic; }
+  .MMM-SensorData .sd-ai-summary.sd-ai-error { color:#ff6573; border-color:rgba(255,101,115,0.4); background:rgba(255,101,115,0.12); }
+  .MMM-SensorData .sd-ai-badges { display:flex; gap:4px; margin-bottom:4px; }
+  .MMM-SensorData .sd-badge { font-size:9px; padding:2px 5px 2px; border-radius:10px; background:rgba(255,255,255,0.12); color:#ddd; letter-spacing:.5px; font-weight:600; }
+  .MMM-SensorData .sd-badge-fallback { background:#ff9f43; color:#222; }
+  .MMM-SensorData .sd-badge-cached { background:#4fcf83; color:#062616; }
+
+@media (max-width: 500px) {
+  .MMM-SensorData .sd-report-panel { --sd-report-scale:1.05; font-size:calc(13px * var(--sd-report-scale)); padding:10px 12px 12px; }
+  .MMM-SensorData .sd-card-main { font-size:calc(18px * var(--sd-report-scale)); }
+  .MMM-SensorData .sd-groups table { font-size:calc(12px * var(--sd-report-scale)); }
+}
+
+/* === Loading ========================================================== */
+.MMM-SensorData .sensor-loading { font-size: calc(15px * var(--sd-ui-scale)); opacity:.65; padding: 6px 4px; }
+
+/* === Charts =========================================================== */
+.MMM-SensorData .sensor-charts { margin-top: 8px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.07); }
+.MMM-SensorData .sensor-chart-row { margin: 6px 0 10px; }
+.MMM-SensorData .sensor-chart-label { font-size: calc(11px * var(--sd-ui-scale)); text-transform: uppercase; letter-spacing: 1px; color: var(--sd-fg-faint); margin-bottom: 3px; font-weight: 600; }
+.MMM-SensorData canvas.sensor-chart { width: 100%; display: block; border-radius: 4px; background: linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.01)); box-shadow: 0 2px 6px -2px rgba(0,0,0,.5) inset, 0 0 0 1px rgba(255,255,255,0.05); }
+
+/* === Buttons ========================================================== */
+.MMM-SensorData button {
+  background: var(--sd-accent-grad);
+  color: #081e11;
+  border: none;
+  font-size: calc(12px * var(--sd-ui-scale));
+  font-weight: 600;
+  padding: 4px 10px 5px;
+  border-radius: 16px;
+  cursor: pointer;
+  letter-spacing: .6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.4);
+  transition: transform .15s, box-shadow .3s, filter .3s;
+  position: relative;
+}
+.MMM-SensorData button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px -2px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,0.07); }
+.MMM-SensorData button:active { transform: translateY(0); filter: brightness(.9); }
+.MMM-SensorData button:disabled { opacity: .55; cursor: default; transform: none; }
+
+/* Export info small line */
+.MMM-SensorData .sensor-row.info-row.export-info { font-size:10px; opacity:.75; margin-top:2px; }
+
+/* Subtle animated accent on live rows */
+.MMM-SensorData .sensor-row:not(.info-row):before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 0;
+  background: radial-gradient(circle at 8px 50%,rgba(79,207,131,0.25),transparent 55%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .4s;
+}
+.MMM-SensorData .sensor-row:hover:before { opacity:.7; }
+
+/* Motion active highlight (when motion true) - we'll toggle via inline style or class later if needed */
+.MMM-SensorData .sensor-row.motion-active { border-left-color: var(--sd-accent); background: var(--sd-accent-soft); }
+
+/* Per-sensor accent coloring */
+.MMM-SensorData .sd-temp { border-left-color:#ffb347; }
+.MMM-SensorData .sd-temp.sd-cold { border-left-color:#5fb3ff; }
+.MMM-SensorData .sd-temp.sd-comfy { border-left-color:#4fcf83; }
+.MMM-SensorData .sd-temp.sd-hot { border-left-color:#ff6573; }
+.MMM-SensorData .sd-humidity { border-left-color:#5f9eff; }
+.MMM-SensorData .sd-light { border-left-color:#f4e860; }
+.MMM-SensorData .sd-motion { border-left-color:#b180ff; }
+.MMM-SensorData .sd-motion.motion-active { background: rgba(177,128,255,0.18); }
+
+/* Responsive tweaks for narrower columns */
+@media (max-width: 500px) {
+  .MMM-SensorData { font-size: 14px; }
+  .MMM-SensorData .sensor-value { font-size: 15px; }
+  .MMM-SensorData button { padding: 4px 8px; }
+}
