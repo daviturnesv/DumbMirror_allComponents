@@ -1,3 +1,46 @@
+# Ignore common editor, OS, Python virtualenv and node artifacts
+.DS_Store
+Thumbs.db
+node_modules/
+**/node_modules/
+*.log
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.db
+/.vscode/
+.idea/
+.pytest_cache/
+coverage/
+dist/
+build/
+*.egg-info/
+/.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Ignore Python virtualenv site-packages created under project
+**/.venv/
+
+# Ignore system files
+ehthumbs.db
+Icon?
+
+# Ignore temporary files
+*.swp
+*.swo
+
+# Ignore OS generated files
+desktop.ini
+
+# Keep relay-server files tracked; other folders will be ignored when appropriate
+# (This .gitignore is permissive; if there are already tracked files outside relay-server,
+# they remain tracked. Use git restore/checkout to revert unwanted tracked files.)
 node_modules/
 .env
 coverage/
