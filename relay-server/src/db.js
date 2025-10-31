@@ -45,32 +45,11 @@ async function getClient() {
     }
     client = undefined;
     database = undefined;
-    // If the failure looks like an SSL/TLS validation problem and the operator
-    // enabled the ALLOW_INSECURE_MONGO flag, attempt a one-time insecure
-    // connection to help confirm the root cause. This is only intended for
-    // temporary debugging — do NOT enable in production.
-    const isSslError = err && err.message && /ssl|tls|SSL|TLS/i.test(err.message);
-    const allowInsecure = process.env.ALLOW_INSECURE_MONGO === '1';
-    if (isSslError && allowInsecure) {
-      console.warn('[db] SSL error detected and ALLOW_INSECURE_MONGO=1 -> attempting insecure TLS connection (for debug only)');
-      try {
-        client = new MongoClient(databaseConfig.mongoUri, {
-          maxPoolSize: 10,
-          tlsAllowInvalidCertificates: true
-        });
-        await client.connect();
-        database = client.db(databaseConfig.mongoDbName);
-        await ensureIndexes(database);
-        console.warn('[db] Insecure connection to MongoDB established (tlsAllowInvalidCertificates=true)');
-        return client;
-      } catch (fallbackErr) {
-        console.error('[db] Insecure fallback also failed', fallbackErr && fallbackErr.message ? fallbackErr.message : fallbackErr);
-        try { await client.close(); } catch (_) { }
-        client = undefined;
-        database = undefined;
-        throw fallbackErr;
-      }
-    }
+    // After cleaning up the partially-initialized client, rethrow the original
+    // connection error. The temporary insecure TLS fallback has been removed
+    // to avoid accidental use in production. If you need to debug TLS issues,
+    // use local diagnostic scripts (`tls-check.js`, `test-mongo.js`) and Atlas
+    // Network Access adjustments instead of relaxing TLS validation.
     throw err;
   }
 }
