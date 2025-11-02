@@ -4,7 +4,7 @@ const BASE = process.env.SMOKE_URL || process.env.RENDER_URL || 'http://127.0.0.
 const email = process.env.SMOKE_EMAIL || `smoke-${Date.now()}@example.com`;
 const password = process.env.SMOKE_PASS || 'SmokePwd123!';
 
-async function req(path, opts = {}){
+async function req(path, opts = {}) {
   const url = `${BASE}${path}`;
   const res = await fetch(url, opts);
   const text = await res.text();
@@ -13,7 +13,7 @@ async function req(path, opts = {}){
   return { status: res.status, ok: res.ok, body };
 }
 
-async function run(){
+async function run() {
   console.log('[smoke] base:', BASE);
   console.log('[smoke] health -> GET /health');
   let r = await req('/health');
