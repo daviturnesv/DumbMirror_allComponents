@@ -7,13 +7,24 @@ Module.register('MMM-RemoteRelay', {
     mirrorSecret: '',
     heartbeatInterval: 30000,
     autoAcknowledge: false,
-    acknowledgementTimeout: 15000
+    acknowledgementTimeout: 15000,
+    forwardNotifications: [
+      'SENSORDATA_REMOTE_UPDATE',
+      'SENSORDATA_SUMMARY',
+      'SENSORDATA_REPORT_BROADCAST',
+      'AI_RESPONSE'
+    ]
   },
 
   start() {
     this.connectionState = 'disconnected';
     this.statusMessage = null;
     this.pendingCommands = new Map();
+    console.log('[MMM-RemoteRelay] module start config', {
+      relayUrl: this.config?.relayUrl,
+      mirrorIdLength: this.config?.mirrorId ? this.config.mirrorId.length : 0,
+      mirrorSecretLength: this.config?.mirrorSecret ? this.config.mirrorSecret.length : 0
+    });
     this.sendSocketNotification('REMOTE_RELAY_CONFIG', this.config);
   },
 
@@ -76,9 +87,14 @@ Module.register('MMM-RemoteRelay', {
     this.updateDom();
   },
 
-  notificationReceived(notification, payload) {
+  notificationReceived(notification, payload, sender) {
     if (notification === 'REMOTE_RELAY_COMMAND_RESULT' && payload?.commandId) {
       this.reportCommandResult(payload);
+      return;
+    }
+
+    if (this._shouldForwardNotification(notification)) {
+      this._forwardNotification(notification, payload, sender);
     }
   },
 
@@ -112,5 +128,27 @@ Module.register('MMM-RemoteRelay', {
   reportCommandResult(payload) {
     this.clearCommandTimeout(payload.commandId);
     this.sendSocketNotification('REMOTE_RELAY_COMMAND_RESULT', payload);
+  },
+
+  _shouldForwardNotification(notification) {
+    if (!notification) {
+      return false;
+    }
+    const list = Array.isArray(this.config.forwardNotifications)
+      ? this.config.forwardNotifications
+      : this.defaults.forwardNotifications;
+    if (Array.isArray(list) && list.length) {
+      return list.includes(notification);
+    }
+    return false;
+  },
+
+  _forwardNotification(notification, payload, sender) {
+    this.sendSocketNotification('REMOTE_RELAY_FORWARD', {
+      notification,
+      payload,
+      sender: sender?.identifier || null,
+      forwardedAt: Date.now()
+    });
   }
 });

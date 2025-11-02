@@ -3,6 +3,52 @@
 const NodeHelper = require('node_helper');
 const Log = require('logger');
 const ioClient = require('socket.io-client');
+const fs = require('node:fs');
+const path = require('node:path');
+
+let cachedEnv = null;
+
+function loadEnv() {
+  if (cachedEnv) return cachedEnv;
+  cachedEnv = {};
+  try {
+    const envPath = path.join(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      content.split(/\r?\n/).forEach((line) => {
+        const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
+        if (match) {
+          cachedEnv[match[1]] = match[2];
+        }
+      });
+    }
+  } catch (error) {
+    Log.warn('[MMM-RemoteRelay] falha ao ler .env', error.message);
+  }
+  return cachedEnv;
+}
+
+function getEnvValue(key, fallback = '') {
+  const fromProcess = process.env && process.env[key];
+  if (fromProcess) return fromProcess.trim();
+  const envMap = loadEnv();
+  if (envMap[key]) return envMap[key].trim();
+  return fallback;
+}
+
+function withEnvFallback(config) {
+  const merged = Object.assign({}, config);
+  if (!merged.relayUrl) {
+    merged.relayUrl = getEnvValue('RELAY_BASE_URL', 'https://dumbmirror-relayserver.onrender.com');
+  }
+  if (!merged.mirrorId) {
+    merged.mirrorId = getEnvValue('RELAY_MIRROR_ID', '');
+  }
+  if (!merged.mirrorSecret) {
+    merged.mirrorSecret = getEnvValue('RELAY_MIRROR_SECRET', '');
+  }
+  return merged;
+}
 
 module.exports = NodeHelper.create({
   start() {
@@ -20,7 +66,12 @@ module.exports = NodeHelper.create({
 
   socketNotificationReceived(notification, payload) {
     if (notification === 'REMOTE_RELAY_CONFIG') {
-      this.config = payload;
+      this.config = withEnvFallback(payload);
+      Log.log('[MMM-RemoteRelay] received config', {
+        relayUrl: this.config?.relayUrl,
+        mirrorIdLength: this.config?.mirrorId ? this.config.mirrorId.length : 0,
+        mirrorSecretLength: this.config?.mirrorSecret ? this.config.mirrorSecret.length : 0
+      });
       this.authFailed = false;
       this.initializeConnection();
     } else if (notification === 'REMOTE_RELAY_COMMAND_RESULT') {
@@ -31,6 +82,8 @@ module.exports = NodeHelper.create({
           data: payload.data || null
         });
       }
+    } else if (notification === 'REMOTE_RELAY_FORWARD') {
+      this.forwardEvent(payload);
     }
   },
 
@@ -145,5 +198,16 @@ module.exports = NodeHelper.create({
 
   updateClientState(state, message) {
     this.sendSocketNotification('REMOTE_RELAY_STATE', { state, message });
+  },
+
+  forwardEvent(event) {
+    if (!event || !this.socket || !this.socket.connected) {
+      return;
+    }
+    try {
+      this.socket.emit('mirror-event', Object.assign({ forwardedAt: Date.now() }, event));
+    } catch (error) {
+      Log.warn('[MMM-RemoteRelay] falha ao encaminhar evento', error.message);
+    }
   }
 });

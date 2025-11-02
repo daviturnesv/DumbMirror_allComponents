@@ -5,6 +5,7 @@ import com.dumbmirror.remote.data.local.ConnectionRepository
 import com.dumbmirror.remote.data.local.RelayAccountRepository
 import com.dumbmirror.remote.data.remote.RemoteGatewayFactory
 import com.dumbmirror.remote.data.remote.RelayRemoteDataSource
+import com.dumbmirror.remote.domain.model.RelayDefaults
 import kotlinx.serialization.json.Json
 import com.dumbmirror.remote.domain.usecase.SaveConnectionConfigUseCase
 import com.dumbmirror.remote.domain.usecase.TestConnectionUseCase
@@ -36,6 +37,8 @@ object AppGraph {
     }
 
     fun provideRelayRemoteDataSource(baseUrl: String): RelayRemoteDataSource {
-        return RelayRemoteDataSource(baseUrl = baseUrl, json = json)
+        val effectiveBase = baseUrl.ifBlank { RelayDefaults.DEFAULT_BASE_URL }
+        val normalized = RelayDefaults.normalizeBaseUrl(effectiveBase)
+        return RelayRemoteDataSource(baseUrl = normalized, json = json)
     }
 }

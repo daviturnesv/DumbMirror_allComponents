@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.dumbmirror.remote.domain.model.RelayAccount
+import com.dumbmirror.remote.domain.model.RelayDefaults
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -29,8 +30,10 @@ class RelayAccountRepository(private val context: Context) {
 
     fun observeAccount(): Flow<RelayAccount> {
         return dataStore.data.map { prefs ->
+            val storedBase = prefs[Keys.BASE_URL].orEmpty()
+            val normalizedBase = if (storedBase.isBlank()) storedBase else RelayDefaults.normalizeBaseUrl(storedBase)
             RelayAccount(
-                baseUrl = prefs[Keys.BASE_URL] ?: "",
+                baseUrl = normalizedBase.ifBlank { RelayDefaults.DEFAULT_BASE_URL },
                 email = prefs[Keys.EMAIL] ?: "",
                 accessToken = prefs[Keys.TOKEN],
                 mirrorId = prefs[Keys.MIRROR_ID],
@@ -41,7 +44,8 @@ class RelayAccountRepository(private val context: Context) {
 
     suspend fun saveAccount(account: RelayAccount) {
         dataStore.edit { prefs ->
-            prefs[Keys.BASE_URL] = account.baseUrl.trim()
+            val normalizedBase = RelayDefaults.normalizeBaseUrl(account.baseUrl.ifBlank { RelayDefaults.DEFAULT_BASE_URL })
+            prefs[Keys.BASE_URL] = normalizedBase
             prefs[Keys.EMAIL] = account.email.trim()
             val token = account.accessToken?.takeIf { it.isNotBlank() }
             if (token == null) prefs.remove(Keys.TOKEN) else prefs[Keys.TOKEN] = token

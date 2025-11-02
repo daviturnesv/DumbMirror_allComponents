@@ -13,6 +13,7 @@ import com.dumbmirror.remote.data.remote.RelayRemoteDataSource
 import com.dumbmirror.remote.domain.usecase.SaveConnectionConfigUseCase
 import com.dumbmirror.remote.domain.usecase.TestConnectionUseCase
 import com.dumbmirror.remote.domain.model.ConnectionMode
+import com.dumbmirror.remote.domain.model.RelayDefaults
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,7 +40,7 @@ class DashboardViewModel(
                         draftMode = if (state.isDialogOpen) state.draftMode else config.mode,
                         draftBaseUrl = if (state.isDialogOpen) state.draftBaseUrl else config.baseUrl,
                         draftToken = if (state.isDialogOpen) state.draftToken else config.token.orEmpty(),
-                        draftRelayBaseUrl = if (state.isDialogOpen) state.draftRelayBaseUrl else config.relay.baseUrl,
+                        draftRelayBaseUrl = if (state.isDialogOpen) state.draftRelayBaseUrl else config.relay.baseUrl.ifBlank { RelayDefaults.DEFAULT_BASE_URL },
                         draftRelayToken = if (state.isDialogOpen) state.draftRelayToken else config.relay.accessToken.orEmpty(),
                         draftRelayMirrorId = if (state.isDialogOpen) state.draftRelayMirrorId else config.relay.mirrorId.orEmpty()
                     )
@@ -54,7 +55,7 @@ class DashboardViewModel(
                     // Preenche rascunhos apenas quando o diálogo não está aberto para não sobrescrever edição
                     state.copy(
                         relayEmail = acc.email.ifBlank { state.relayEmail },
-                        draftRelayBaseUrl = if (state.isDialogOpen) state.draftRelayBaseUrl else acc.baseUrl.ifBlank { state.draftRelayBaseUrl },
+                        draftRelayBaseUrl = if (state.isDialogOpen) state.draftRelayBaseUrl else acc.baseUrl.ifBlank { state.draftRelayBaseUrl.ifBlank { RelayDefaults.DEFAULT_BASE_URL } },
                         draftRelayToken = if (state.isDialogOpen) state.draftRelayToken else (acc.accessToken ?: state.draftRelayToken),
                         draftRelayMirrorId = if (state.isDialogOpen) state.draftRelayMirrorId else (acc.mirrorId ?: state.draftRelayMirrorId)
                     )
@@ -70,7 +71,7 @@ class DashboardViewModel(
                 draftMode = state.config.mode,
                 draftBaseUrl = state.config.baseUrl,
                 draftToken = state.config.token.orEmpty(),
-                draftRelayBaseUrl = state.config.relay.baseUrl,
+                draftRelayBaseUrl = state.config.relay.baseUrl.ifBlank { RelayDefaults.DEFAULT_BASE_URL },
                 draftRelayToken = state.config.relay.accessToken.orEmpty(),
                 draftRelayMirrorId = state.config.relay.mirrorId.orEmpty(),
                 message = null
@@ -118,18 +119,27 @@ class DashboardViewModel(
                 ConnectionConfig.fromParts(draftUrl, state.draftToken)
             }
             ConnectionMode.RELAY -> {
-                val relayHost = state.draftRelayBaseUrl.trim()
+                val relayHostInput = state.draftRelayBaseUrl.trim().ifEmpty { RelayDefaults.DEFAULT_BASE_URL }
+                val relayHost = RelayDefaults.normalizeBaseUrl(relayHostInput)
                 val mirrorId = state.draftRelayMirrorId.trim()
                 if (relayHost.isEmpty() || mirrorId.isEmpty()) {
                     _uiState.update { it.copy(message = "Informe o endereço do Relay e o ID do espelho.") }
                     return
                 }
-                ConnectionConfig.fromRelay(relayHost, state.draftRelayToken, mirrorId)
+                val relayToken = state.draftRelayToken.trim().ifEmpty { null }
+                ConnectionConfig.fromRelay(relayHost, relayToken, mirrorId)
             }
         }
         viewModelScope.launch {
             saveConnectionUseCase(config)
-            _uiState.update { it.copy(isDialogOpen = false, message = "Configuração salva.") }
+            _uiState.update {
+                it.copy(
+                    isDialogOpen = false,
+                    message = "Configuração salva.",
+                    config = config,
+                    draftRelayBaseUrl = if (config.mode == ConnectionMode.RELAY) config.relay.baseUrl else it.draftRelayBaseUrl
+                )
+            }
         }
     }
 
@@ -157,15 +167,20 @@ class DashboardViewModel(
     }
 
     fun performRelayLogin() {
-        val base = _uiState.value.draftRelayBaseUrl.trim()
+        val baseInput = _uiState.value.draftRelayBaseUrl.trim()
         val email = _uiState.value.loginEmail.trim()
         val password = _uiState.value.loginPassword
-        if (base.isEmpty() || email.isEmpty() || password.isEmpty()) {
-            _uiState.update { it.copy(message = "Informe Relay, email e senha.") }
+        if (email.isEmpty() || password.isEmpty()) {
+            _uiState.update { it.copy(message = "Informe email e senha.") }
+            return
+        }
+        val normalizedBase = RelayDefaults.normalizeBaseUrl(baseInput.ifEmpty { RelayDefaults.DEFAULT_BASE_URL })
+        if (normalizedBase.isEmpty()) {
+            _uiState.update { it.copy(message = "Endereço do Relay inválido.") }
             return
         }
         viewModelScope.launch {
-            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(base)
+            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(normalizedBase)
             val result = ds.login(email, password)
             _uiState.update { state ->
                 if (result.isSuccess) {
@@ -173,7 +188,7 @@ class DashboardViewModel(
                     val tokenPreview = if (session.token.length > 14) session.token.take(8) + "…" + session.token.takeLast(6) else session.token
                     val newState = state.copy(
                         isLoginDialogOpen = false,
-                        draftRelayBaseUrl = session.baseUrl,
+                        draftRelayBaseUrl = normalizedBase,
                         // Atualiza o token e limpa o MirrorId para evitar ficar com um ID antigo de outra conta
                         draftRelayToken = session.token,
                         draftRelayMirrorId = "",
@@ -184,11 +199,11 @@ class DashboardViewModel(
                     // Persistimos token imediatamente na ConnectionConfig e também na RelayAccount
                     viewModelScope.launch {
                         val currentMirrorId = newState.draftRelayMirrorId.ifBlank { null }
-                        val newConfig = ConnectionConfig.fromRelay(session.baseUrl, session.token, currentMirrorId)
+                        val newConfig = ConnectionConfig.fromRelay(normalizedBase, session.token, currentMirrorId)
                         saveConnectionUseCase(newConfig)
                         relayAccountRepository.saveAccount(
                             com.dumbmirror.remote.domain.model.RelayAccount(
-                                baseUrl = session.baseUrl,
+                                baseUrl = normalizedBase,
                                 email = session.user.email,
                                 accessToken = session.token,
                                 mirrorId = currentMirrorId,
@@ -210,19 +225,28 @@ class DashboardViewModel(
 
     // Verifica qual usuário está associado ao token atual via /api/auth/me
     fun verifyRelayToken() {
-        val base = _uiState.value.draftRelayBaseUrl.trim()
+        val baseInput = _uiState.value.draftRelayBaseUrl.trim()
         val token = _uiState.value.draftRelayToken.trim()
-        if (base.isEmpty() || token.isEmpty()) {
-            _uiState.update { it.copy(message = "Informe Relay e token para verificar.") }
+        if (token.isEmpty()) {
+            _uiState.update { it.copy(message = "Informe token para verificar.") }
+            return
+        }
+        val normalizedBase = RelayDefaults.normalizeBaseUrl(baseInput.ifEmpty { RelayDefaults.DEFAULT_BASE_URL })
+        if (normalizedBase.isEmpty()) {
+            _uiState.update { it.copy(message = "Endereço do Relay inválido.") }
             return
         }
         viewModelScope.launch {
-            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(base)
+            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(normalizedBase)
             val result = ds.whoAmI(token)
             _uiState.update { state ->
                 if (result.isSuccess) {
                     val user = result.getOrNull()!!
-                    state.copy(relayEmail = user.email, message = "Token pertence a: ${user.email}")
+                    state.copy(
+                        relayEmail = user.email,
+                        draftRelayBaseUrl = normalizedBase,
+                        message = "Token pertence a: ${user.email}"
+                    )
                 } else {
                     val ex = result.exceptionOrNull()
                     val msg = ex?.message ?: ex?.toString() ?: "Falha ao verificar token."
@@ -233,22 +257,27 @@ class DashboardViewModel(
     }
 
     fun performRelayRegister() {
-        val base = _uiState.value.draftRelayBaseUrl.trim()
+        val baseInput = _uiState.value.draftRelayBaseUrl.trim()
         val email = _uiState.value.loginEmail.trim()
         val password = _uiState.value.loginPassword
-        if (base.isEmpty() || email.isEmpty() || password.isEmpty()) {
-            _uiState.update { it.copy(message = "Informe Relay, email e senha.") }
+        if (email.isEmpty() || password.isEmpty()) {
+            _uiState.update { it.copy(message = "Informe email e senha.") }
+            return
+        }
+        val normalizedBase = RelayDefaults.normalizeBaseUrl(baseInput.ifEmpty { RelayDefaults.DEFAULT_BASE_URL })
+        if (normalizedBase.isEmpty()) {
+            _uiState.update { it.copy(message = "Endereço do Relay inválido.") }
             return
         }
         viewModelScope.launch {
-            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(base)
+            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(normalizedBase)
             val result = ds.register(email, password)
             _uiState.update { state ->
                 if (result.isSuccess) {
                     val session = result.getOrNull()!!
                     state.copy(
                         isLoginDialogOpen = false,
-                        draftRelayBaseUrl = session.baseUrl,
+                        draftRelayBaseUrl = normalizedBase,
                         draftRelayToken = session.token,
                         message = "Conta criada e autenticada no Relay."
                     )
@@ -263,14 +292,19 @@ class DashboardViewModel(
 
     // Relay: Mirrors
     fun openMirrorPicker() {
-        val base = _uiState.value.draftRelayBaseUrl.trim()
+        val baseInput = _uiState.value.draftRelayBaseUrl.trim()
         val token = _uiState.value.draftRelayToken.trim()
-        if (base.isEmpty() || token.isEmpty()) {
+        if (token.isEmpty()) {
             _uiState.update { it.copy(message = "Faça login no Relay antes de listar espelhos.") }
             return
         }
+        val normalizedBase = RelayDefaults.normalizeBaseUrl(baseInput.ifEmpty { RelayDefaults.DEFAULT_BASE_URL })
+        if (normalizedBase.isEmpty()) {
+            _uiState.update { it.copy(message = "Endereço do Relay inválido.") }
+            return
+        }
         viewModelScope.launch {
-            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(base)
+            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(normalizedBase)
             val result = ds.listMirrors(token)
             _uiState.update { state ->
                 if (result.isSuccess) {
@@ -281,7 +315,8 @@ class DashboardViewModel(
                         isMirrorPickerOpen = true,
                         mirrors = sorted,
                         mirrorPickerMessage = null,
-                        isCreateSectionExpanded = false
+                        isCreateSectionExpanded = false,
+                        draftRelayBaseUrl = normalizedBase
                     )
                 } else {
                     val ex = result.exceptionOrNull()
@@ -301,7 +336,8 @@ class DashboardViewModel(
         _uiState.update { it.copy(draftRelayMirrorId = mirrorId, isMirrorPickerOpen = false) }
         // Se já tivermos host e token do Relay, persistimos automaticamente a configuração
         val stateNow = _uiState.value
-        val relayHost = stateNow.draftRelayBaseUrl.trim()
+        val relayHostInput = stateNow.draftRelayBaseUrl.trim().ifEmpty { RelayDefaults.DEFAULT_BASE_URL }
+        val relayHost = RelayDefaults.normalizeBaseUrl(relayHostInput)
         val relayToken = stateNow.draftRelayToken.trim()
         if (relayHost.isNotEmpty() && relayToken.isNotEmpty()) {
             viewModelScope.launch {
@@ -319,6 +355,7 @@ class DashboardViewModel(
                 _uiState.update {
                     it.copy(
                         config = newConfig,
+                        draftRelayBaseUrl = relayHost,
                         // Mantém o diálogo aberto, mas já informa que aplicou
                         message = "Espelho selecionado: $mirrorName. Configuração atualizada automaticamente.")
                 }
@@ -329,16 +366,21 @@ class DashboardViewModel(
     }
 
     fun createMirror(name: String) {
-        val base = _uiState.value.draftRelayBaseUrl.trim()
+        val baseInput = _uiState.value.draftRelayBaseUrl.trim()
         val token = _uiState.value.draftRelayToken.trim()
-        if (base.isEmpty() || token.isEmpty()) {
+        if (token.isEmpty()) {
             _uiState.update { it.copy(message = "Faça login no Relay antes de criar espelho.") }
+            return
+        }
+        val normalizedBase = RelayDefaults.normalizeBaseUrl(baseInput.ifEmpty { RelayDefaults.DEFAULT_BASE_URL })
+        if (normalizedBase.isEmpty()) {
+            _uiState.update { it.copy(message = "Endereço do Relay inválido.") }
             return
         }
         val mirrorName = name.ifBlank { "Meu Espelho" }
         viewModelScope.launch {
             _uiState.update { it.copy(isCreatingMirror = true, mirrorPickerMessage = null) }
-            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(base)
+            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(normalizedBase)
             val result = ds.createMirror(token, mirrorName)
             _uiState.update { state ->
                 val baseState = state.copy(isCreatingMirror = false)
@@ -348,25 +390,27 @@ class DashboardViewModel(
                         draftRelayMirrorId = created.mirror.id,
                         mirrors = listOf(created.mirror) + state.mirrors,
                         mirrorPickerMessage = "Espelho criado: ${created.mirror.name}. ID: ${created.mirror.id}. Secret: ${created.secret}. Configure no MMM-RemoteRelay e reinicie o MagicMirror.",
-                        isCreateSectionExpanded = false
+                        isCreateSectionExpanded = false,
+                        draftRelayBaseUrl = normalizedBase
                     )
                     // Persistimos imediatamente a nova seleção se já houver token/base
                     viewModelScope.launch {
                         val relayHostNow = updated.draftRelayBaseUrl.trim()
                         val relayTokenNow = updated.draftRelayToken.trim()
                         if (relayHostNow.isNotEmpty() && relayTokenNow.isNotEmpty()) {
-                            val cfg = ConnectionConfig.fromRelay(relayHostNow, relayTokenNow, created.mirror.id, created.mirror.name)
+                            val normalizedHostNow = RelayDefaults.normalizeBaseUrl(relayHostNow)
+                            val cfg = ConnectionConfig.fromRelay(normalizedHostNow, relayTokenNow, created.mirror.id, created.mirror.name)
                             saveConnectionUseCase(cfg)
                             relayAccountRepository.saveAccount(
                                 com.dumbmirror.remote.domain.model.RelayAccount(
-                                    baseUrl = relayHostNow,
+                                    baseUrl = normalizedHostNow,
                                     email = _uiState.value.relayEmail ?: "",
                                     accessToken = relayTokenNow,
                                     mirrorId = created.mirror.id,
                                     mirrorName = created.mirror.name
                                 )
                             )
-                            _uiState.update { it.copy(config = cfg) }
+                            _uiState.update { it.copy(config = cfg, draftRelayBaseUrl = normalizedHostNow) }
                         }
                     }
                     updated
@@ -381,22 +425,30 @@ class DashboardViewModel(
 
     // Seleciona por ID manualmente. Útil quando você já vê o ID no MagicMirror mas não lembra a conta.
     fun selectMirrorByIdManual(id: String) {
-        val base = _uiState.value.draftRelayBaseUrl.trim()
+        val baseInput = _uiState.value.draftRelayBaseUrl.trim()
         val token = _uiState.value.draftRelayToken.trim()
         val mirrorId = id.trim()
-        if (base.isEmpty() || token.isEmpty() || mirrorId.isEmpty()) {
-            _uiState.update { it.copy(mirrorPickerMessage = "Informe Relay, token e o ID do espelho.") }
+        if (token.isEmpty() || mirrorId.isEmpty()) {
+            _uiState.update { it.copy(mirrorPickerMessage = "Informe token e o ID do espelho.") }
+            return
+        }
+        val normalizedBase = RelayDefaults.normalizeBaseUrl(baseInput.ifEmpty { RelayDefaults.DEFAULT_BASE_URL })
+        if (normalizedBase.isEmpty()) {
+            _uiState.update { it.copy(mirrorPickerMessage = "Endereço do Relay inválido.") }
             return
         }
         viewModelScope.launch {
-            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(base)
+            val ds: RelayRemoteDataSource = AppGraph.provideRelayRemoteDataSource(normalizedBase)
             val result = ds.getMirrorStatus(token, mirrorId)
             _uiState.update { state ->
                 if (result.isSuccess) {
                     val m = result.getOrNull()!!
                     // Mesmo que esteja offline, podemos salvar a seleção; o objetivo aqui é alinhar o ID correto
                     selectMirror(mirrorId, m.name)
-                    state.copy(mirrorPickerMessage = "Espelho ${m.name} selecionado por ID.")
+                    state.copy(
+                        mirrorPickerMessage = "Espelho ${m.name} selecionado por ID.",
+                        draftRelayBaseUrl = normalizedBase
+                    )
                 } else {
                     val msg = result.exceptionOrNull()?.message ?: "Não foi possível acessar este ID. Pode pertencer a outra conta. Tente entrar com outra conta e repetir."
                     state.copy(mirrorPickerMessage = msg)
@@ -413,11 +465,13 @@ class DashboardViewModel(
         viewModelScope.launch {
             relayAccountRepository.clearAccount()
             val base = _uiState.value.draftRelayBaseUrl
-            val cleared = ConnectionConfig.fromRelay(base, null, null)
+            val normalizedBase = RelayDefaults.normalizeBaseUrl(base.ifBlank { RelayDefaults.DEFAULT_BASE_URL })
+            val cleared = ConnectionConfig.fromRelay(normalizedBase, null, null)
             saveConnectionUseCase(cleared)
             _uiState.update {
                 it.copy(
                     config = cleared,
+                    draftRelayBaseUrl = normalizedBase.ifBlank { RelayDefaults.DEFAULT_BASE_URL },
                     relayEmail = null,
                     draftRelayToken = "",
                     draftRelayMirrorId = "",
@@ -494,7 +548,7 @@ data class DashboardUiState(
     val draftMode: ConnectionMode = ConnectionMode.LAN,
     val draftBaseUrl: String = "",
     val draftToken: String = "",
-    val draftRelayBaseUrl: String = "",
+    val draftRelayBaseUrl: String = RelayDefaults.DEFAULT_BASE_URL,
     val draftRelayToken: String = "",
     val draftRelayMirrorId: String = "",
     val relayEmail: String? = null,

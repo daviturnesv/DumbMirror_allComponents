@@ -459,7 +459,20 @@ Module.register("MMM-SensorData", {
         motion: payload.motion
       });
     }
+    this._forwardLiveUpdate(payload);
     this.updateDom();
+  },
+
+  _forwardLiveUpdate(payload) {
+    const ts = this.lastUpdate || Date.now();
+    const summary = {
+      ts,
+      temperature: typeof payload?.temperature === 'number' ? payload.temperature : null,
+      humidity: typeof payload?.humidity === 'number' ? payload.humidity : null,
+      light: typeof payload?.light === 'number' ? payload.light : null,
+      motion: typeof payload?.motion === 'boolean' ? payload.motion : (typeof payload?.motion === 'number' ? payload.motion : null)
+    };
+    this.sendNotification('SENSORDATA_REMOTE_UPDATE', summary);
   },
 
   _maybeAppendLiveHistoryPoint(payload) {

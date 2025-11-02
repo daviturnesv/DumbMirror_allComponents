@@ -13,3 +13,5 @@ coverage/
 .idea/
 .vscode/
 .serena/
+android-app/.gradle/
+android-app/app/build/

@@ -1,6 +1,0 @@
-[
-    {
-        "merged": "com.dumbmirror.remote.app-debug-70:/xml_network_security_config.xml.flat",
-        "source": "com.dumbmirror.remote.app-main-72:/xml/network_security_config.xml"
-    }
-]
