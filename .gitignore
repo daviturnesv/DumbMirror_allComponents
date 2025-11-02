@@ -47,3 +47,7 @@ coverage/
 logs/
 *.log
 data/
+
+# Github
+.github/
+
