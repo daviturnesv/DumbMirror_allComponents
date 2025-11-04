@@ -28,6 +28,9 @@ The server listens on the port defined by `PORT` (default `8081`).
 - `POST /api/mirrors` — create a mirror; response returns generated `secret`
 - `GET /api/mirrors/:mirrorId/status` — retrieve online status and last heartbeat
 - `POST /api/mirrors/:mirrorId/commands` — forward a notification/payload to the connected mirror
+- `GET /api/mirrors/:mirrorId/sensors/latest` — obtém a leitura mais recente transmitida pelo espelho
+- `GET /api/mirrors/:mirrorId/sensors/summary` — recupera o pacote de resumo emitido quando o módulo envia `SENSORDATA_SUMMARY`
+- `GET /api/mirrors/:mirrorId/sensors/report` — devolve o último relatório agregado (ex.: comandos de relatório ou resumo IA)
 
 All `/api/*` routes (except user creation/login) require a bearer token in the `Authorization` header.
 

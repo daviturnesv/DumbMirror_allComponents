@@ -279,6 +279,22 @@ export function createRelayServer({ configOverride } = {}) {
     });
   }));
 
+  app.get("/api/mirrors/:mirrorId/sensors/summary", authenticateRequest, asyncHandler(async (req, res) => {
+    const { mirrorId } = req.params;
+    const mirror = await getMirrorById(mirrorId);
+    if (!mirror || mirror.ownerId !== req.user.id) {
+      return res.status(404).json({ error: "Mirror not found" });
+    }
+    const state = mirrorState.get(mirrorId);
+    if (!state?.sensors?.summary?.data) {
+      return res.status(404).json({ error: "No sensor summary available" });
+    }
+    res.json({
+      mirror: { id: mirrorId },
+      summary: state.sensors.summary
+    });
+  }));
+
   app.get("/api/mirrors/:mirrorId/sensors/report", authenticateRequest, asyncHandler(async (req, res) => {
     const { mirrorId } = req.params;
     const mirror = await getMirrorById(mirrorId);

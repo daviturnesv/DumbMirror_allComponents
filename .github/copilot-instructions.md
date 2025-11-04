@@ -30,6 +30,7 @@
 - Use `configureDatabase` if you need to override connection details inside tests or scripts; production code reads from `config` only once.
 - Socket handlers store state in the `mirrorConnections` map (`mirrorId` -> `{ socket, ownerId, lastSeen }`); extend that structure instead of creating parallel registries.
 - Log using `console.*` with `[context]` prefixes, matching existing style for easier Render log filtering.
+- Após qualquer modificação relevante (feature nova ou correção de bug), gerar um arquivo em `Andamento/` nomeado com timestamp (`YYYY-MM-DD-HHmmss.md`) explicando o que foi alterado e descrevendo o estado atual do código para sincronizar os agentes em máquinas diferentes.
 
 ## Legacy Notes
 - The old SQLite scripts in `scripts/list.mjs` and `scripts/reset-db.mjs` are stale (reference removed APIs); avoid invoking them until they are rewritten for MongoDB.
