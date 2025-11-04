@@ -28,30 +28,10 @@ async function getClient() {
   client = new MongoClient(databaseConfig.mongoUri, {
     maxPoolSize: 10
   });
-  try {
-    console.log('[db] Connecting to MongoDB...', databaseConfig.mongoUri);
-    await client.connect();
-    database = client.db(databaseConfig.mongoDbName);
-    await ensureIndexes(database);
-    console.log('[db] Connected to MongoDB, using DB:', databaseConfig.mongoDbName);
-    return client;
-  } catch (err) {
-    console.error('[db] Failed to connect to MongoDB', err && err.message ? err.message : err);
-    // ensure client is not left in partially-connected state
-    try {
-      await client.close();
-    } catch (closeErr) {
-      console.error('[db] Error closing client after failed connect', closeErr && closeErr.message ? closeErr.message : closeErr);
-    }
-    client = undefined;
-    database = undefined;
-    // After cleaning up the partially-initialized client, rethrow the original
-    // connection error. The temporary insecure TLS fallback has been removed
-    // to avoid accidental use in production. If you need to debug TLS issues,
-    // use local diagnostic scripts (`tls-check.js`, `test-mongo.js`) and Atlas
-    // Network Access adjustments instead of relaxing TLS validation.
-    throw err;
-  }
+  await client.connect();
+  database = client.db(databaseConfig.mongoDbName);
+  await ensureIndexes(database);
+  return client;
 }
 
 async function ensureIndexes(db) {
@@ -81,18 +61,12 @@ export async function createUser({ email, password }) {
   const db = await getDb();
   const passwordHash = await bcrypt.hash(password, 10);
   const createdAt = Date.now();
-  try {
-    const { insertedId } = await db.collection("users").insertOne({
-      email,
-      passwordHash,
-      createdAt
-    });
-    console.log('[db] Created user', email, 'id=', insertedId && insertedId.toHexString ? insertedId.toHexString() : String(insertedId));
-    return { id: insertedId.toHexString(), email, createdAt };
-  } catch (err) {
-    console.error('[db] Failed to create user', email, err && err.message ? err.message : err);
-    throw err;
-  }
+  const { insertedId } = await db.collection("users").insertOne({
+    email,
+    passwordHash,
+    createdAt
+  });
+  return { id: insertedId.toHexString(), email, createdAt };
 }
 
 export async function findUserByEmail(email) {

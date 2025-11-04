@@ -11,9 +11,8 @@
     "test": "ava",
     "test:watch": "ava --watch",
     "db:list": "node ./scripts/list.mjs",
-    "db:reset": "node ./scripts/reset-db.mjs"
-    ,
-    "smoke": "node relay-server/smoke-test.js"
+    "db:reset": "node ./scripts/reset-db.mjs",
+    "smoke": "node smoke-test.js"
   },
   "engines": {
     "node": ">=18.18.0"
