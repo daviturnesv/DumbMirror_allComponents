@@ -2,6 +2,7 @@ package com.dumbmirror.remote.data.remote
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -34,6 +35,24 @@ interface RelayApiService {
         @Header("Authorization") authHeader: String,
         @Path("mirrorId") mirrorId: String
     ): Response<MirrorStatusResponse>
+
+    @GET("api/mirrors/{mirrorId}/sensors/latest")
+    suspend fun getSensorLatest(
+        @Header("Authorization") authHeader: String,
+        @Path("mirrorId") mirrorId: String
+    ): Response<SensorLatestResponse>
+
+    @GET("api/mirrors/{mirrorId}/sensors/summary")
+    suspend fun getSensorSummary(
+        @Header("Authorization") authHeader: String,
+        @Path("mirrorId") mirrorId: String
+    ): Response<SensorSummaryResponse>
+
+    @GET("api/mirrors/{mirrorId}/sensors/report")
+    suspend fun getSensorReport(
+        @Header("Authorization") authHeader: String,
+        @Path("mirrorId") mirrorId: String
+    ): Response<SensorReportResponse>
 }
 
 @Serializable
@@ -108,4 +127,47 @@ data class RelayMirrorStatusDto(
     val name: String,
     val online: Boolean,
     val lastSeen: Long? = null
+)
+
+@Serializable
+data class MirrorRefDto(
+    val id: String
+)
+
+@Serializable
+data class SensorLatestResponse(
+    val mirror: MirrorRefDto,
+    val sensor: SensorReadingDto
+)
+
+@Serializable
+data class SensorSummaryResponse(
+    val mirror: MirrorRefDto,
+    val summary: SensorEnvelopeDto
+)
+
+@Serializable
+data class SensorReportResponse(
+    val mirror: MirrorRefDto,
+    val report: SensorEnvelopeDto
+)
+
+@Serializable
+data class SensorReadingDto(
+    val ts: Long? = null,
+    val temperature: Double? = null,
+    val humidity: Double? = null,
+    val light: Double? = null,
+    val motion: JsonElement? = null,
+    val forwardedAt: Long? = null,
+    val receivedAt: Long? = null,
+    val sender: String? = null
+)
+
+@Serializable
+data class SensorEnvelopeDto(
+    val data: JsonElement? = null,
+    val forwardedAt: Long? = null,
+    val receivedAt: Long? = null,
+    val sender: String? = null
 )

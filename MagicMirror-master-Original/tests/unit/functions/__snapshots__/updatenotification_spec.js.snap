@@ -1,15 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`Updatenotification custom module returns status information without hash 1`] = `
-{
-  "behind": 7,
-  "current": "master",
-  "hash": "",
-  "isBehindInStatus": false,
-  "module": "MMM-Fuel",
-  "tracking": "origin/master",
-}
-`;
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`Updatenotification MagicMirror on develop returns status information 1`] = `
 {
@@ -95,6 +84,17 @@ exports[`Updatenotification MagicMirror on master without match in taglist retur
   "hash": "332e429a41f1a2339afd4f0ae96dd125da6beada",
   "isBehindInStatus": true,
   "module": "MagicMirror",
+  "tracking": "origin/master",
+}
+`;
+
+exports[`Updatenotification custom module returns status information without hash 1`] = `
+{
+  "behind": 7,
+  "current": "master",
+  "hash": "",
+  "isBehindInStatus": false,
+  "module": "MMM-Fuel",
   "tracking": "origin/master",
 }
 `;

@@ -161,6 +161,7 @@ Module.register("MMM-SensorData", {
   this._reportScale = this.config.reportScale || 1;
     this._pendingAiSummary = null;
     this._aiWatchdogTimer = null;
+    this._latestWeather = null;
   },
 
   getStyles() {
@@ -614,6 +615,9 @@ Module.register("MMM-SensorData", {
       case 'AI_RESPONSE':
         this._handleAiResponse(payload);
         break;
+      case 'WEATHER_UPDATED':
+        this._handleWeatherUpdated(payload);
+        break;
     }
   }
   ,
@@ -624,7 +628,7 @@ Module.register("MMM-SensorData", {
     let v = (this._reportScale || 1) + (dir * step);
     if (v < min) v = min; if (v > max) v = max;
     if (Math.abs(v - this._reportScale) < 0.0001) return; // sem mudança
-    this._reportScale = parseFloat(v.toFixed(3));
+  this._reportScale = Number.parseFloat(v.toFixed(3));
     this.updateDom();
   },
   _requestReport(opts) {
@@ -758,8 +762,92 @@ Module.register("MMM-SensorData", {
 
       this._lastReport._aiSummaryAttempted = true;
       this.updateDom();
+
+      // Reenvia o relatório completo para outros consumidores (Relay/app) verem o resumo atualizado
+      try {
+        const refreshed = structuredClone(this._lastReport);
+        this.sendNotification('SENSORDATA_REPORT_BROADCAST', refreshed);
+      } catch (err) {
+        console.warn('[MMM-SensorData] Falha ao propagar relatório atualizado:', err?.message);
+      }
     }
   ,
+  _handleWeatherUpdated(payload) {
+    if (!payload) {
+      return;
+    }
+
+    const normalizeTimestamp = (value) => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+      if (typeof value === 'string') {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    };
+
+    const normalizeNumber = (value) => {
+      if (value === null || value === undefined) {
+        return null;
+      }
+      if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
+      }
+      const parsed = Number.parseFloat(String(value));
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const normalizeEntry = (entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+      const weatherType = typeof entry.weatherType === 'string' ? entry.weatherType : null;
+      return {
+        ts: normalizeTimestamp(entry.date ?? entry.ts ?? entry.time ?? null),
+        temperature: normalizeNumber(entry.temperature ?? entry.temp ?? entry.maxTemperature ?? entry.minTemperature),
+        minTemperature: normalizeNumber(entry.minTemperature),
+        maxTemperature: normalizeNumber(entry.maxTemperature),
+        humidity: normalizeNumber(entry.humidity),
+        precipProbability: normalizeNumber(entry.precipitationProbability ?? entry.pop),
+        precipAmount: normalizeNumber(entry.precipitationAmount),
+        weatherType,
+        feelsLike: normalizeNumber(entry.feelsLikeTemp ?? entry.feels_like),
+        windSpeed: normalizeNumber(entry.windSpeed),
+        windFromDirection: normalizeNumber(entry.windFromDirection),
+        uvIndex: normalizeNumber(entry.uv_index ?? entry.uvIndex),
+        pressure: normalizeNumber(entry.pressure)
+      };
+    };
+
+    const normalizeList = (list, limit) => {
+      if (!Array.isArray(list) || list.length === 0) {
+        return [];
+      }
+      const output = [];
+      const max = Math.min(list.length, limit);
+      for (let index = 0; index < max; index += 1) {
+        const normalized = normalizeEntry(list[index]);
+        if (normalized) {
+          output.push(normalized);
+        }
+      }
+      return output;
+    };
+
+    this._latestWeather = {
+      receivedAt: Date.now(),
+      providerName: typeof payload.providerName === 'string' ? payload.providerName : null,
+      locationName: typeof payload.locationName === 'string' ? payload.locationName : null,
+      current: normalizeEntry(payload.currentWeather),
+      forecast: normalizeList(payload.forecastArray, 4),
+      hourly: normalizeList(payload.hourlyArray, 6)
+    };
+
+    this.sendSocketNotification('SENSORDATA_WEATHER_UPDATE', this._latestWeather);
+  }
+,
   _hideReport() {
     if (this._reportHideTimer) { clearTimeout(this._reportHideTimer); this._reportHideTimer = null; }
     if (this._lastReport) {
