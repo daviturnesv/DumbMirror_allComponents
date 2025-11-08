@@ -1,4 +1,4 @@
-module.exports = async () => {
+module.exports = async function jestConfig () {
 	return {
 		verbose: true,
 		testTimeout: 20000,
@@ -8,10 +8,15 @@ module.exports = async () => {
 				displayName: "unit",
 				globalSetup: "<rootDir>/tests/unit/helpers/global-setup.js",
 				moduleNameMapper: {
-					logger: "<rootDir>/js/logger.js"
+					logger: "<rootDir>/js/logger.js",
+					node_helper: "<rootDir>/js/node_helper.js"
 				},
 				testMatch: ["**/tests/unit/**/*.[jt]s?(x)"],
-				testPathIgnorePatterns: ["<rootDir>/tests/unit/mocks", "<rootDir>/tests/unit/helpers"]
+				testPathIgnorePatterns: [
+					"<rootDir>/tests/unit/mocks",
+					"<rootDir>/tests/unit/helpers",
+					"<rootDir>/modules/MMM-Remote-Control/tests/unit"
+				]
 			},
 			{
 				displayName: "electron",

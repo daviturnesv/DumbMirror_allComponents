@@ -25,6 +25,7 @@ module.exports = NodeHelper.create({
   this._statsTimer = null; // periodic stats logging
   this._downsampleTimer = null; // periodic downsampling
   this._dbFile = null; // remember db path for size stats
+    this._latestWeather = null;
     console.log("[MMM-SensorData] node_helper started");
   this._logLevels = { silent:0, error:1, warn:2, info:3, debug:4 };
   },
@@ -57,7 +58,8 @@ module.exports = NodeHelper.create({
     if (notification === "SENSORDATA_CONFIG") {
       this.config = payload;
       const lvlName = (this.config.logLevel||'info').toLowerCase();
-      const lvl = this._logLevels[lvlName] != null ? this._logLevels[lvlName] : 3;
+  const lvlKnown = Object.prototype.hasOwnProperty.call(this._logLevels, lvlName);
+  const lvl = lvlKnown ? this._logLevels[lvlName] : 3;
       this._logLevelValue = lvl;
       this._l = {
         error: (...a)=> { if (this._logLevelValue >= 1) console.error('[MMM-SensorData]', ...a); },
@@ -73,7 +75,30 @@ module.exports = NodeHelper.create({
       this._exportCsv(payload || {});
     } else if (notification === 'SENSORDATA_REPORT_REQUEST') {
       this._generateReport(payload || {});
+    } else if (notification === 'SENSORDATA_WEATHER_UPDATE') {
+      this._updateWeather(payload);
     }
+  },
+
+  _updateWeather(weatherPayload) {
+    if (!weatherPayload || typeof weatherPayload !== 'object') {
+      return;
+    }
+    const snapshot = { ...weatherPayload };
+    if (snapshot.current && typeof snapshot.current === 'object') {
+      snapshot.current = { ...snapshot.current };
+    }
+    if (Array.isArray(snapshot.forecast)) {
+      snapshot.forecast = snapshot.forecast.map((item) => (item && typeof item === 'object' ? { ...item } : null)).filter((item) => item !== null);
+    }
+    if (Array.isArray(snapshot.hourly)) {
+      snapshot.hourly = snapshot.hourly.map((item) => (item && typeof item === 'object' ? { ...item } : null)).filter((item) => item !== null);
+    }
+    if (!Number.isFinite(snapshot.receivedAt)) {
+      snapshot.receivedAt = Date.now();
+    }
+    this._latestWeather = snapshot;
+    this._l?.debug('Weather snapshot recebido', snapshot.locationName || 'local desconhecido');
   },
 
   // Carrega a biblioteca 'mqtt' de forma preguiçosa. Foi removida acidentalmente em refactor.
@@ -216,7 +241,7 @@ module.exports = NodeHelper.create({
         motion INTEGER
       )`).run();
       try { this.db.prepare('CREATE INDEX IF NOT EXISTS idx_sensor_ts ON sensor_readings(ts)').run(); }
-      catch (ie) { console.warn('[MMM-SensorData] Aviso ao criar índice:', ie.message); }
+  catch (error_) { console.warn('[MMM-SensorData] Aviso ao criar índice:', error_.message); }
       // aggregated (downsampled) table
       this.db.prepare(`CREATE TABLE IF NOT EXISTS sensor_readings_ds (
         bucket_start INTEGER PRIMARY KEY, -- início do intervalo (epoch ms)
@@ -226,7 +251,7 @@ module.exports = NodeHelper.create({
         light REAL,
         motion INTEGER
       )`).run();
-  try { this.db.prepare('CREATE INDEX IF NOT EXISTS idx_sensor_ds_bucket ON sensor_readings_ds(bucket_start)').run(); } catch (e2) { console.debug('[MMM-SensorData] Índice ds opcional falhou:', e2.message); }
+  try { this.db.prepare('CREATE INDEX IF NOT EXISTS idx_sensor_ds_bucket ON sensor_readings_ds(bucket_start)').run(); } catch (error_) { console.debug('[MMM-SensorData] Índice ds opcional falhou:', error_.message); }
       // meta table para incremental export
       this.db.prepare(`CREATE TABLE IF NOT EXISTS sensor_meta (
         key TEXT PRIMARY KEY,
@@ -495,8 +520,8 @@ module.exports = NodeHelper.create({
   },
 
   /* ------------- History ------------- */
-  _sendHistory(sinceMinutes) {
-    const minutes = sinceMinutes || 60;
+  _sendHistory(sinceMinutes = 60) {
+    const minutes = Number.isFinite(sinceMinutes) && sinceMinutes > 0 ? sinceMinutes : 60;
     if (!this.config?.enablePersistence) {
       this.sendSocketNotification('SENSORDATA_HISTORY', { readings: [] });
       return;
@@ -612,7 +637,7 @@ module.exports = NodeHelper.create({
     try {
       if (this._useSqlite) {
         const row = this.db.prepare('SELECT value FROM sensor_meta WHERE key = ?').get('lastExportTs');
-        return row?.value ? parseInt(row.value,10) || 0 : 0;
+  return row?.value ? Number.parseInt(row.value, 10) || 0 : 0;
       }
       if (this._useJson) {
         const metaPath = (this._jsonStore.file || '').replace(/\.json$/i, '.meta.json');
@@ -678,7 +703,8 @@ module.exports = NodeHelper.create({
     return { filePath, newLastTs: readings[readings.length-1].ts };
   },
   _writeFullCsv(dir, readings, rawStartTs, customName) {
-    const filename = customName || `sensordata_export_${new Date().toISOString().replace(/[:.]/g,'-')}.csv`;
+  const timestamp = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
+  const filename = customName || `sensordata_export_${timestamp}.csv`;
     const filePath = path.join(dir, filename);
     const header = 'ts,iso,temperature,humidity,light,motion,aggregated\n';
     const lines = [header];
@@ -704,7 +730,7 @@ module.exports = NodeHelper.create({
       }
     } catch (e) { this._l?.warn('Falha atualizando lastExportTs', e.message); }
   },
-  _csvVal(v){ return (v===null||typeof v==='undefined') ? '' : v; },
+  _csvVal(v){ return (v === null || v === undefined) ? '' : v; },
 
   /* ------------- Report Generation ------------- */
   _generateReport(options) {
@@ -754,8 +780,8 @@ module.exports = NodeHelper.create({
         stats,
         groupBy: groupBy || null,
         groups,
-        rawCount: rows._rawCount != null ? rows._rawCount : rows.length,
-        aggregatedCount: rows._aggregatedCount != null ? rows._aggregatedCount : 0,
+  rawCount: typeof rows._rawCount === 'number' ? rows._rawCount : rows.length,
+  aggregatedCount: typeof rows._aggregatedCount === 'number' ? rows._aggregatedCount : 0,
   downsamplingActive: !!this._autoDownsampleEnabled || !!this.config.downsample,
   lastDownsampleRun: this._lastDownsampleRun || null
   };
@@ -859,11 +885,166 @@ module.exports = NodeHelper.create({
       const spanH = (h.max - h.min).toFixed(1);
       parts.push(`Humidade média ${h.avg.toFixed(0)}% (variação ${spanH}%).`);
     }
-    if (m && m.ratio != null) {
+  if (m && typeof m.ratio === 'number') {
       parts.push(`Atividade de movimento em ${(m.ratio*100).toFixed(0)}% das amostras.`);
     }
     if (!parts.length) return null;
     return parts.join(' ');
+  },
+  _buildWeatherContextLines(helpers) {
+    const weather = this._latestWeather;
+    if (!weather || typeof weather !== 'object') {
+      return [];
+    }
+    const recencyMs = Number.isFinite(weather.receivedAt) ? Date.now() - weather.receivedAt : null;
+    const maxAgeMs = 4 * 60 * 60 * 1000;
+    if (recencyMs !== null && recencyMs > maxAgeMs) {
+      return [];
+    }
+
+    const location = this._cleanWeatherLabel(weather.locationName);
+    const provider = this._cleanWeatherLabel(weather.providerName);
+    const recencyLabel = helpers.describeRecency(recencyMs);
+    const headerParts = [];
+    if (location) {
+      headerParts.push(`em ${location}`);
+    }
+    if (recencyLabel) {
+      headerParts.push(`medição há ${recencyLabel}`);
+    }
+    if (provider) {
+      headerParts.push(`fonte ${provider}`);
+    }
+    const headerSuffix = headerParts.length ? ` (${headerParts.join(', ')})` : '';
+    const lines = [`Contexto meteorológico recente${headerSuffix}.`];
+
+    const currentLine = this._formatCurrentWeatherLine(weather.current, helpers);
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    const hourlyLines = this._formatHourlyWeatherLines(weather.hourly, helpers);
+    if (hourlyLines.length) {
+      lines.push(`Próximas horas: ${hourlyLines.join(' | ')}.`);
+    }
+
+    const dailyLines = this._formatDailyWeatherLines(weather.forecast, helpers);
+    if (dailyLines.length) {
+      lines.push(`Previsão diária: ${dailyLines.join(' | ')}.`);
+    }
+
+    return lines;
+  },
+  _formatCurrentWeatherLine(entry, helpers) {
+    if (!entry || typeof entry !== 'object') {
+      return null;
+    }
+    const parts = [];
+    const mainTemp = helpers.describeTemperature(entry.temperature);
+    if (mainTemp) {
+      parts.push(`temperatura ${mainTemp}`);
+    }
+    const feelsLike = helpers.describeTemperature(entry.feelsLike);
+    if (feelsLike && feelsLike !== mainTemp) {
+      parts.push(`sensação ${feelsLike}`);
+    }
+    const humidity = helpers.describePercent(entry.humidity);
+    if (humidity) {
+      parts.push(`humidade ${humidity}`);
+    }
+    const precip = helpers.describePercent(entry.precipProbability);
+    if (precip) {
+      parts.push(`prob. precip. ${precip}`);
+    }
+    const condition = this._cleanWeatherLabel(entry.weatherType);
+    if (condition) {
+      parts.push(`condição "${condition}"`);
+    }
+    const wind = helpers.toNumberLabel(entry.windSpeed, 0);
+    if (wind !== '-') {
+      parts.push(`vento ${wind} km/h`);
+    }
+    if (!parts.length) {
+      return null;
+    }
+    return `Agora: ${parts.join(', ')}.`;
+  },
+  _formatHourlyWeatherLines(hourly, helpers) {
+    if (!Array.isArray(hourly) || !hourly.length) {
+      return [];
+    }
+    const limit = Math.min(hourly.length, 3);
+    const result = [];
+    for (let index = 0; index < limit; index += 1) {
+      const entry = hourly[index];
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      const parts = [];
+      const temp = helpers.describeTemperature(entry.temperature);
+      if (temp) {
+        parts.push(temp);
+      }
+      const precip = helpers.describePercent(entry.precipProbability);
+      if (precip) {
+        parts.push(`${precip} chuva`);
+      }
+      const condition = this._cleanWeatherLabel(entry.weatherType);
+      if (condition) {
+        parts.push(condition);
+      }
+      if (!parts.length) {
+        continue;
+      }
+      const hourLabel = helpers.toHourLabel(entry.ts);
+      const summary = parts.join(', ');
+      result.push(hourLabel ? `${hourLabel}: ${summary}` : summary);
+    }
+    return result;
+  },
+  _formatDailyWeatherLines(forecast, helpers) {
+    if (!Array.isArray(forecast) || !forecast.length) {
+      return [];
+    }
+    const limit = Math.min(forecast.length, 2);
+    const result = [];
+    for (let index = 0; index < limit; index += 1) {
+      const entry = forecast[index];
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      const minTemp = helpers.describeTemperature(entry.minTemperature);
+      const maxTemp = helpers.describeTemperature(entry.maxTemperature);
+      const precip = helpers.describePercent(entry.precipProbability);
+      const condition = this._cleanWeatherLabel(entry.weatherType);
+      const buckets = [];
+      if (minTemp || maxTemp) {
+        const minChunk = minTemp || '?';
+        const maxChunk = maxTemp || '?';
+        buckets.push(`temperaturas ${minChunk} a ${maxChunk}`);
+      }
+      if (precip) {
+        buckets.push(`${precip} chuva`);
+      }
+      if (condition) {
+        buckets.push(condition);
+      }
+      if (!buckets.length) {
+        continue;
+      }
+      const label = Number.isFinite(entry.ts)
+        ? new Date(entry.ts).toLocaleDateString('pt-BR', { weekday: 'short' })
+        : 'dia';
+      result.push(`${label}: ${buckets.join(', ')}`);
+    }
+    return result;
+  },
+  _cleanWeatherLabel(value) {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
   },
   _buildAiPrompt(report) {
     const stats = report.stats || {};
@@ -889,6 +1070,42 @@ module.exports = NodeHelper.create({
       const median = toNumberLabel(metric.median) + unit;
       return `avg ${avg} (min ${min} / max ${max} / med ${median})`;
     };
+    const describeTemperature = (value, digits = 1) => {
+      const label = toNumberLabel(value, digits);
+      return label === "-" ? null : `${label}°C`;
+    };
+
+    const describePercent = (value) => {
+      const label = toNumberLabel(value, 0);
+      return label === "-" ? null : `${label}%`;
+    };
+
+    const describeRecency = (ms) => {
+      if (!Number.isFinite(ms) || ms < 0) {
+        return null;
+      }
+      const minutes = Math.round(ms / 60000);
+      if (minutes < 1) {
+        return "menos de 1 min";
+      }
+      if (minutes < 60) {
+        return `${minutes} min`;
+      }
+      const hours = minutes / 60;
+      if (hours < 24) {
+        return `${hours.toFixed(1)} h`;
+      }
+      const days = hours / 24;
+      return `${days.toFixed(1)} dias`;
+    };
+
+    const toHourLabel = (ts) => {
+      if (!Number.isFinite(ts)) {
+        return null;
+      }
+      const date = new Date(ts);
+      return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+    };
 
     const lines = [];
     lines.push(`Resumo dos sensores entre ${new Date(report.from).toISOString()} e ${new Date(report.to).toISOString()}.`);
@@ -912,6 +1129,17 @@ module.exports = NodeHelper.create({
       lines.push(`Movimento: ${ratioPercent}% de amostras ativas (${events} eventos / ${samples} amostras).`);
     }
 
+    const weatherLines = this._buildWeatherContextLines({
+      toNumberLabel,
+      describeTemperature,
+      describePercent,
+      describeRecency,
+      toHourLabel
+    });
+    if (weatherLines.length) {
+      lines.push(...weatherLines);
+    }
+
     if (Array.isArray(report.groups) && report.groups.length) {
       const sampleWindow = report.groups.slice(-Math.min(4, report.groups.length));
       const parts = sampleWindow.map((group) => {
@@ -923,12 +1151,13 @@ module.exports = NodeHelper.create({
         const motionRatio = typeof group.stats?.motion?.ratio === "number"
           ? `${Math.round(group.stats.motion.ratio * 100)}%`
           : "-";
-        return `${label}: ${avgTemp === "-" ? '-' : `${avgTemp}°C`} mov ${motionRatio}`;
+        const temperatureLabel = avgTemp === "-" ? "-" : `${avgTemp}°C`;
+        return `${label}: ${temperatureLabel} mov ${motionRatio}`;
       });
       lines.push(`Amostra recente por grupo: ${parts.join(' | ')}`);
     }
 
-    lines.push("Gere um resumo curto (<=3 frases) em português, enfatizando tendências (subida/descida), estabilidade ou variações, possíveis causas simples (ex: período mais frio, variação de humidade), e interpretação da atividade de movimento. Evite repetir números triviais demais.");
+    lines.push("Gere um resumo curto (<=3 frases) em português, enfatizando tendências (subida/descida), estabilidade ou variações, possíveis causas simples (ex: período mais frio, variação de humidade) e interpretação da atividade de movimento. Se houver contexto meteorológico acima, correlacione possíveis impactos nas leituras internas (ex: chuva ou calor externo) e destaque alertas relevantes. Evite repetir números triviais e não invente dados ausentes.");
     return lines.join("\n");
   }
 });

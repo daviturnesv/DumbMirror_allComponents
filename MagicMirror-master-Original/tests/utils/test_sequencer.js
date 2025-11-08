@@ -7,16 +7,19 @@ class CustomSequencer extends TestSequencer {
 			let indexA = -1;
 			let indexB = -1;
 			const reg = ".*/tests/([^/]*).*";
+			const normalize = (input) => (typeof input === "string" ? input.replaceAll("\\", "/") : "");
 
 			// move calendar and newsfeed at the end
-			if (testA.path.includes("e2e/modules/calendar_spec") || testA.path.includes("e2e/modules/newsfeed_spec")) return 1;
-			if (testB.path.includes("e2e/modules/calendar_spec") || testB.path.includes("e2e/modules/newsfeed_spec")) return -1;
+			const pathA = normalize(testA.path);
+			const pathB = normalize(testB.path);
+			if (pathA.includes("e2e/modules/calendar_spec") || pathA.includes("e2e/modules/newsfeed_spec")) return 1;
+			if (pathB.includes("e2e/modules/calendar_spec") || pathB.includes("e2e/modules/newsfeed_spec")) return -1;
 
-			let matchA = new RegExp(reg, "g").exec(testA.path);
-			if (matchA.length > 0) indexA = orderPath.indexOf(matchA[1]);
+			const matchA = new RegExp(reg, "g").exec(pathA);
+			if (matchA && matchA.length > 1) indexA = orderPath.indexOf(matchA[1]);
 
-			let matchB = new RegExp(reg, "g").exec(testB.path);
-			if (matchB.length > 0) indexB = orderPath.indexOf(matchB[1]);
+			const matchB = new RegExp(reg, "g").exec(pathB);
+			if (matchB && matchB.length > 1) indexB = orderPath.indexOf(matchB[1]);
 
 			if (indexA === indexB) return 0;
 
