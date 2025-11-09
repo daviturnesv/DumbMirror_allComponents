@@ -6,7 +6,7 @@ Permissões: ao carregar a página do MagicMirror, o navegador solicitará permi
 
 Configuração mínima (exemplo):
 
-```
+```javascript
 {
   module: "MMM-LocalCamera",
   position: "top_center",
@@ -15,22 +15,28 @@ Configuração mínima (exemplo):
 ```
 
 Notificações suportadas:
+
 - `LOCALCAMERA_TOGGLE` (boolean opcional; sem payload alterna para ligado)
 - `LOCALCAMERA_START`
 - `LOCALCAMERA_STOP`
 - `LOCALCAMERA_ZOOM` { set?: number, delta?: number } — aumenta/diminui ou define o zoom
 - `LOCALCAMERA_SIZE` { set?: number, delta?: number } — altera a escala do quadro (tamanho na tela)
 - `LOCALCAMERA_FILTER` { name?: string, cycle?: boolean } — troca filtro ou faz ciclo entre presets
+- `LOCALCAMERA_SET_DEVICE` { deviceId?: string, id?: string, label?: string } — alterna para a câmera indicada (busca por label se fornecer string)
+- `LOCALCAMERA_NEXT_DEVICE` / `LOCALCAMERA_PREV_DEVICE` — cicla entre as câmeras disponíveis
 
 Opções:
+
 - `width`/`height`: tamanho do vídeo.
 - `mirror`: espelhar horizontalmente (padrão true).
 - `facingMode`: `user` ou `environment`.
 - `deviceId`: ID específico da câmera (opcional).
+- `preferredLabelPattern`: expressão regular (string) usada para procurar automaticamente a câmera cujo label combina (ex.: `"logi|c270"`).
+- `autoSwitchOnPattern`: se `true`, troca automaticamente para a câmera combinada pelo pattern na primeira vez que o módulo obtiver a lista de dispositivos.
 - `frameRate`: FPS desejado.
 - `retryMs`: tempo entre tentativas em caso de erro.
 - `zoom`, `minZoom`, `maxZoom`, `zoomStep`.
 - `sizeScale`, `minScale`, `maxScale`, `scaleStep`.
 - `filter`: preset inicial (none, grayscale, sepia, invert, contrast, saturate, warm, cool, blur).
 
-Compatível com navegadores modernos. Em desktops, certifique-se que o site (ex.: http://localhost:8080) tem permissão de câmera.
+Compatível com navegadores modernos. Em desktops, certifique-se que o site (ex.: [http://localhost:8080](http://localhost:8080)) tem permissão de câmera.

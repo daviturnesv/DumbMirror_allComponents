@@ -30,6 +30,12 @@ Module.register("MMM-VoiceBridge", {
       "exportar dados": { notification: "SENSORDATA_EXPORT" },
       "atualizar sensores": { notification: "SENSORDATA_REFRESH_HISTORY" },
       "mostrar resumo": { notification: "SENSORDATA_COMMAND", payload: { action: "summary" } },
+      "gerar resumo diário": { notification: "DAILYBRIEFING_REFRESH" },
+      "atualizar resumo diário": { notification: "DAILYBRIEFING_REFRESH" },
+      "gerar resumo do dia": { notification: "DAILYBRIEFING_REFRESH" },
+      "ocultar resumo diário": { notification: "DAILYBRIEFING_CLEAR" },
+      "limpar resumo diário": { notification: "DAILYBRIEFING_CLEAR" },
+      "limpar resumo": { notification: "DAILYBRIEFING_CLEAR" },
       // Câmera: aumentar/reduzir e modos
       "aumentar câmera": { notification: "LOCALCAMERA_SIZE", payload: { delta: 0.15 } },
       "diminuir câmera": { notification: "LOCALCAMERA_SIZE", payload: { delta: -0.15 } },

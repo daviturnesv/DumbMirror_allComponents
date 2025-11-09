@@ -13,29 +13,31 @@ Module.register("MMM-LocalCamera", {
     startOnMount: true,
     facingMode: "user", // "user" (frontal) | "environment" (traseira em celulares)
     deviceId: "", // opcional: id específico do dispositivo de câmera
-  frameRate: 30,
-  // Zoom/escala
-  zoom: 1,
-  minZoom: 1,
-  maxZoom: 4,
-  zoomStep: 0.2,
-  sizeScale: 1,
-  minScale: 0.6,
-  maxScale: 2,
-  scaleStep: 0.15,
-  // Limites adicionais por viewport para evitar crescimento infinito do módulo
-  // (fração do tamanho da janela). Pode ajustar conforme o layout.
-  maxViewportWidth: 0.6,  // 60% da largura da tela
-  maxViewportHeight: 0.45, // 45% da altura da tela
-  // Detecção de sobreposição com outros módulos e aviso de limite
-  overlapAwareMax: true,
-  overlapPadding: 6, // px extras para considerar como limiar "um estágio antes"
-  toastMs: 1400,
-  // Modo de visualização máxima (override intencional)
-  maxViewPercentWidth: 0.88,  // 88% da largura da tela
-  maxViewPercentHeight: 0.8,  // 80% da altura da tela
-  // Filtros
-  filter: "none", // presets: none, grayscale, sepia, invert, contrast, saturate, warm, cool, blur
+    preferredLabelPattern: "", // regex (string) aplicada a labels para escolha automática (Logi, C270 etc.)
+    autoSwitchOnPattern: true, // se true tenta alternar automaticamente para a câmera cujo label casa com o pattern
+    frameRate: 30,
+    // Zoom/escala
+    zoom: 1,
+    minZoom: 1,
+    maxZoom: 4,
+    zoomStep: 0.2,
+    sizeScale: 1,
+    minScale: 0.6,
+    maxScale: 2,
+    scaleStep: 0.15,
+    // Limites adicionais por viewport para evitar crescimento infinito do módulo
+    // (fração do tamanho da janela). Pode ajustar conforme o layout.
+    maxViewportWidth: 0.6,  // 60% da largura da tela
+    maxViewportHeight: 0.45, // 45% da altura da tela
+    // Detecção de sobreposição com outros módulos e aviso de limite
+    overlapAwareMax: true,
+    overlapPadding: 6, // px extras para considerar como limiar "um estágio antes"
+    toastMs: 1400,
+    // Modo de visualização máxima (override intencional)
+    maxViewPercentWidth: 0.88,  // 88% da largura da tela
+    maxViewPercentHeight: 0.8,  // 80% da altura da tela
+    // Filtros
+    filter: "none", // presets: none, grayscale, sepia, invert, contrast, saturate, warm, cool, blur
     showStatus: true,
     retryMs: 5000 // re-tenta após erro/permissão negada
   },
@@ -43,15 +45,20 @@ Module.register("MMM-LocalCamera", {
   start() {
     this.stream = null;
     this.videoEl = null;
-  this.frameEl = null;
+    this.frameEl = null;
     this.status = "init"; // init | starting | playing | error | stopped
-  this._hardwareZoom = { supported: false, min: 1, max: 1 };
-  this._zoom = this.config.zoom;
-  this._sizeScale = this.config.sizeScale;
-  this._filter = this.config.filter;
-  this._lastSafeScale = this._sizeScale;
-  this._overrideMax = false;
-  this._toastT = null;
+    this._devices = [];
+    this._currentDeviceId = null;
+    this._forcedDeviceId = null; // quando o usuário escolhe explicitamente
+    this._preferredRegex = this._compilePreferredRegex(this.config.preferredLabelPattern);
+    this._autoSwitchAttempted = false;
+    this._hardwareZoom = { supported: false, min: 1, max: 1 };
+    this._zoom = this.config.zoom;
+    this._sizeScale = this.config.sizeScale;
+    this._filter = this.config.filter;
+    this._lastSafeScale = this._sizeScale;
+    this._overrideMax = false;
+    this._toastT = null;
   },
 
   getStyles() {
@@ -62,23 +69,23 @@ Module.register("MMM-LocalCamera", {
     const root = document.createElement("div");
     root.className = "mmm-localcamera";
 
-  const frame = document.createElement("div");
-  frame.className = "lc-frame";
-  frame.style.width = (this.config.width * this._sizeScale) + "px";
-  frame.style.height = (this.config.height * this._sizeScale) + "px";
-  this.frameEl = frame;
+    const frame = document.createElement("div");
+    frame.className = "lc-frame";
+    frame.style.width = (this.config.width * this._sizeScale) + "px";
+    frame.style.height = (this.config.height * this._sizeScale) + "px";
+    this.frameEl = frame;
 
-  const v = document.createElement("video");
+    const v = document.createElement("video");
     v.className = "lc-video" + (this.config.mirror ? " mirror" : "");
     v.autoplay = true;
     v.muted = true; // necessário para autoplay sem interação
     v.playsInline = true; // iOS
     v.setAttribute("playsinline", "true");
-  v.style.width = "100%";
-  v.style.height = "100%";
+    v.style.width = "100%";
+    v.style.height = "100%";
     this.videoEl = v;
-  frame.appendChild(v);
-  root.appendChild(frame);
+    frame.appendChild(v);
+    root.appendChild(frame);
 
     if (this.config.showStatus) {
       const s = document.createElement("div");
@@ -88,13 +95,13 @@ Module.register("MMM-LocalCamera", {
       root.appendChild(s);
     }
 
-  // Toast para mensagens curtas (ex.: "zoom máximo atingido")
-  const toast = document.createElement("div");
-  toast.className = "lc-toast";
-  toast.style.display = "none";
-  this._toastEl = toast;
-  // anexa ao frame para ficar logo acima dele
-  frame.appendChild(toast);
+    // Toast para mensagens curtas (ex.: "zoom máximo atingido")
+    const toast = document.createElement("div");
+    toast.className = "lc-toast";
+    toast.style.display = "none";
+    this._toastEl = toast;
+    // anexa ao frame para ficar logo acima dele
+    frame.appendChild(toast);
 
     if (this.config.startOnMount) {
       // inicia após inserir no DOM
@@ -128,8 +135,11 @@ Module.register("MMM-LocalCamera", {
     const { width, height, frameRate, facingMode, deviceId } = this.config;
     const video = { width, height, frameRate };
     // Se fallback=true, não usa deviceId exato (para retry após erro)
-    if (!fallback && deviceId) {
-      video.deviceId = { exact: deviceId };
+    if (!fallback) {
+      const target = this._forcedDeviceId || deviceId;
+      if (target) {
+        video.deviceId = { exact: target };
+      }
     } else if (facingMode) {
       video.facingMode = facingMode;
     }
@@ -158,6 +168,8 @@ Module.register("MMM-LocalCamera", {
           const track = stream.getVideoTracks && stream.getVideoTracks()[0];
           if (track) {
             const label = track.label || 'Desconhecida';
+            const settings = typeof track.getSettings === "function" ? track.getSettings() : {};
+            this._currentDeviceId = settings.deviceId || track.id || null;
             console.log(`[MMM-LocalCamera] Câmera ativa: ${label}${fallback ? ' (fallback automático)' : ''}`);
             // Detecta suporte a zoom por hardware
             if (track.getCapabilities) {
@@ -170,6 +182,8 @@ Module.register("MMM-LocalCamera", {
               }
             }
           }
+          // Após primeira captura, armazena a lista completa e tenta aplicar preferências
+          this._refreshDevices();
         } catch (e) {
           // ignore
         }
@@ -183,6 +197,13 @@ Module.register("MMM-LocalCamera", {
             (err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.name === 'NotAllowedError')) {
           console.warn("[MMM-LocalCamera] Tentando novamente sem deviceId específico...");
           this._startCamera(true); // retry com fallback
+          return;
+        }
+        // Se falhou com um forced deviceId explícito, remove para permitir fallback na próxima tentativa
+        if (!fallback && this._forcedDeviceId) {
+          console.warn("[MMM-LocalCamera] Dispositivo forçado não disponível, voltando ao modo automático.");
+          this._forcedDeviceId = null;
+          this._startCamera(true);
           return;
         }
         this._updateStatus("error");
@@ -259,6 +280,16 @@ Module.register("MMM-LocalCamera", {
       if (p.cycle) this._cycleFilter();
       else if (typeof p.name === "string") this._setFilter(p.name);
     }
+    if (notification === "LOCALCAMERA_SET_DEVICE") {
+      const p = payload || {};
+      if (p.deviceId || p.id) {
+        this._switchToDevice(p.deviceId || p.id);
+      } else if (p.label) {
+        this._switchToLabel(p.label);
+      }
+    }
+    if (notification === "LOCALCAMERA_NEXT_DEVICE") this._cycleDevice(+1);
+    if (notification === "LOCALCAMERA_PREV_DEVICE") this._cycleDevice(-1);
   }
 });
 
@@ -328,6 +359,96 @@ Module.prototype._applyStyles = function () {
     } catch (e) { /* ignore */ }
   }
   if (this._statusEl) this._statusEl.textContent = this._statusText();
+};
+
+Module.prototype._refreshDevices = function () {
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    navigator.mediaDevices.enumerateDevices()
+      .then((devices) => {
+        this._devices = (devices || []).filter((d) => d.kind === "videoinput");
+        this._logDevices();
+        if (this.config.autoSwitchOnPattern && this._preferredRegex && !this._autoSwitchAttempted) {
+          this._autoSwitchAttempted = true;
+          this._maybeSwitchPreferred();
+        }
+      })
+      .catch(() => {/* ignore */});
+  } catch {
+    // ignore
+  }
+};
+
+Module.prototype._compilePreferredRegex = function (pattern) {
+  if (!pattern) return null;
+  try {
+    return new RegExp(pattern, "i");
+  } catch (e) {
+    console.warn("[MMM-LocalCamera] preferredLabelPattern inválido:", e && e.message);
+    return null;
+  }
+};
+
+Module.prototype._logDevices = function () {
+  if (!Array.isArray(this._devices) || this._devices.length === 0) return;
+  try {
+    console.log("[MMM-LocalCamera] Dispositivos de vídeo detectados:");
+    this._devices.forEach((d, idx) => {
+      console.log(`  [${idx}] label="${d.label || '(sem label)'}" id=${d.deviceId}`);
+    });
+  } catch {/* ignore */}
+};
+
+Module.prototype._maybeSwitchPreferred = function () {
+  if (!this._preferredRegex || !Array.isArray(this._devices)) return;
+  const match = this._devices.find((d) => typeof d.label === "string" && this._preferredRegex.test(d.label));
+  if (!match) return;
+  if (match.deviceId && match.deviceId !== this._currentDeviceId) {
+    console.log(`[MMM-LocalCamera] Alternando automaticamente para câmera preferida (${match.label}).`);
+    this._switchToDevice(match.deviceId);
+  }
+};
+
+Module.prototype._switchToDevice = function (deviceId) {
+  if (!deviceId) return;
+  if (deviceId === this._currentDeviceId && this.status === "playing") {
+    this._flashToast("câmera já em uso");
+    return;
+  }
+  this._forcedDeviceId = String(deviceId);
+  this._autoSwitchAttempted = true;
+  this._restartWithForcedDevice();
+};
+
+Module.prototype._switchToLabel = function (label) {
+  if (!label || !Array.isArray(this._devices)) return;
+  const target = this._devices.find((d) => (d.label || "").toLowerCase() === String(label).toLowerCase());
+  if (target?.deviceId) {
+    this._switchToDevice(target.deviceId);
+  } else {
+    // procura por substring se não houver match exato
+    const partial = this._devices.find((d) => (d.label || "").toLowerCase().includes(String(label).toLowerCase()));
+    if (partial?.deviceId) this._switchToDevice(partial.deviceId);
+  }
+};
+
+Module.prototype._cycleDevice = function (dir) {
+  if (!Array.isArray(this._devices) || this._devices.length === 0) return;
+  const currentIdx = this._devices.findIndex((d) => d.deviceId === this._currentDeviceId);
+  const nextIdx = (currentIdx + (dir || 1) + this._devices.length) % this._devices.length;
+  const target = this._devices[nextIdx];
+  if (target?.deviceId) {
+    console.log(`[MMM-LocalCamera] Alternando para dispositivo #${nextIdx}: ${target.label || '(sem label)'}`);
+    this._switchToDevice(target.deviceId);
+  }
+};
+
+Module.prototype._restartWithForcedDevice = function () {
+  // Evita loop se não houver `getUserMedia`
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+  this._stopCamera();
+  // pequena espera para liberar o hardware antes de requisitar novamente
+  setTimeout(() => this._startCamera(false), 120);
 };
 
 Module.prototype._setZoom = function (z) {

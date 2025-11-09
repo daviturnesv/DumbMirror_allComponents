@@ -7,6 +7,11 @@ Module.register("MMM-DailyBriefing", {
     maxEvents: 5,
     refreshInterval: 60 * 60 * 1000,
     showPlaceholders: true,
+    eventLookaheadHours: 24,
+    eventPastHours: 2,
+    onlySameDayEvents: true,
+    aiMaxTokens: 360,
+    aiTemperature: 0.3,
     systemPrompt:
       "Você é o assistente de um espelho inteligente residencial. Produza resumos positivos e objetivos em português do Brasil.",
   },
@@ -22,6 +27,8 @@ Module.register("MMM-DailyBriefing", {
     this._lastBriefingAt = 0;
     this._lastWeatherUsed = null;
     this._lastCalendarUsed = null;
+    this._weatherSnapshot = null;
+    this._pendingContext = null;
   },
 
   getStyles() {
@@ -35,6 +42,7 @@ Module.register("MMM-DailyBriefing", {
 
     switch (notification) {
       case "CURRENTWEATHER_DATA":
+      case "WEATHER_UPDATED":
         this._storeWeather(payload);
         break;
       case "CALENDAR_EVENTS":
@@ -50,6 +58,8 @@ Module.register("MMM-DailyBriefing", {
         this.briefingText = null;
         this.errorText = null;
         this.isLoading = false;
+        this._pendingContext = null;
+        this._broadcastClear();
         this.updateDom();
         break;
       default:
@@ -100,12 +110,18 @@ Module.register("MMM-DailyBriefing", {
   },
 
   _storeWeather(payload) {
-    const fingerprint = this._fingerprint(payload);
+    const snapshot = this._selectWeatherSnapshot(payload);
+    if (!snapshot) {
+      return;
+    }
+
+    const fingerprint = this._fingerprint(snapshot);
     if (fingerprint && fingerprint === this._weatherFingerprint) {
       return;
     }
     this.weatherData = payload;
     this._weatherFingerprint = fingerprint;
+    this._weatherSnapshot = snapshot;
     this._maybeGenerate();
   },
 
@@ -130,11 +146,14 @@ Module.register("MMM-DailyBriefing", {
     if (payload.error) {
       this.errorText = payload.error;
       this.briefingText = null;
+      this._broadcastSummary(payload);
     } else {
       this.errorText = null;
       this.briefingText = payload.response || "";
+      this._broadcastSummary(payload);
     }
 
+    this._pendingContext = null;
     this.updateDom();
   },
 
@@ -162,8 +181,8 @@ Module.register("MMM-DailyBriefing", {
   },
 
   generateBriefing() {
-    const prompt = this._buildPrompt();
-    if (!prompt) {
+    const context = this._buildPrompt();
+    if (!context) {
       return;
     }
 
@@ -172,14 +191,23 @@ Module.register("MMM-DailyBriefing", {
     this.briefingText = null;
     this._lastWeatherUsed = this._weatherFingerprint;
     this._lastCalendarUsed = this._calendarFingerprint;
+    this._pendingContext = {
+      weatherSummary: context.weatherSummary,
+      eventSummary: context.eventSummary,
+      eventsUsed: context.eventsUsed,
+      generatedAt: Date.now(),
+    };
     this.updateDom();
+
+    const maxTokens = Number.isFinite(this.config.aiMaxTokens) ? this.config.aiMaxTokens : 360;
+    const temperature = Number.isFinite(this.config.aiTemperature) ? this.config.aiTemperature : 0.3;
 
     this.sendNotification("GET_AI_RESPONSE", {
       provider: (this.config.provider || "gemini").toLowerCase(),
-      prompt,
+      prompt: context.prompt,
       senderId: this.identifier,
       systemPrompt: this.config.systemPrompt,
-      options: { maxTokens: 600 },
+      options: { maxTokens, temperature },
     });
   },
 
@@ -193,20 +221,37 @@ Module.register("MMM-DailyBriefing", {
     });
 
     const weatherSummary = this._formatWeather(this.weatherData);
-    const eventsSummary = this._formatEvents(this.calendarData);
+    const { description: eventsSummary, events } = this._prepareEventSummary(this.calendarData);
 
     if (!weatherSummary && !eventsSummary) {
       return null;
     }
 
-    return [
-      `Hoje é ${dateLabel}.`,
-      weatherSummary || "Sem dados meteorológicos no momento.",
-      eventsSummary || "Sem compromissos na agenda.",
-      "Monte um resumo diário acolhedor com até três parágrafos curtos. Inclua recomendações úteis quando fizer sentido.",
+    const agendaBlock = eventsSummary || "Sem compromissos registrados para hoje. Apenas informe que a agenda está livre.";
+
+    const rules = [
+      "Responda exclusivamente em português do Brasil.",
+      "Use exatamente dois parágrafos curtos (2 ou 3 frases cada), sem títulos, listas ou marcadores.",
+      "Comece mencionando o clima atual, usando as informações fornecidas.",
+      "No segundo parágrafo, comente sobre a agenda do dia. Se não houver compromissos, diga explicitamente que não há eventos agendados.",
+      "Inclua no máximo uma recomendação prática relacionada ao clima ou aos compromissos mencionados, somente se fizer sentido.",
+      "Não invente fatos, feriados, locais ou horários que não estejam na entrada.",
+      "Comece diretamente com o texto; não crie cabeçalhos nem dê nomes ao resumo.",
+    ].join("\n");
+
+    const prompt = [
+      `Data local: ${dateLabel}.`,
+      weatherSummary
+        ? `Dados meteorológicos atuais: ${weatherSummary}`
+        : "Sem dados meteorológicos confiáveis disponíveis.",
+      `Agenda de hoje:\n${agendaBlock}`,
+      "Instruções:",
+      rules,
     ]
       .filter(Boolean)
       .join("\n\n");
+
+    return { prompt, weatherSummary, eventSummary: agendaBlock, eventsUsed: events };
   },
 
   _formatWeather(data) {
@@ -214,14 +259,29 @@ Module.register("MMM-DailyBriefing", {
       return "";
     }
 
-    const current = data?.data?.current || data?.current || data;
+    const current = this._selectWeatherSnapshot(data);
     if (!current || typeof current !== "object") {
       return "";
     }
 
-    const temperature = current.temp ?? current.temperature ?? current.temp_c ?? current.tempF;
-    const feelsLike = current.feels_like ?? current.feelsLike ?? current.apparent_temperature;
-    const summary = current.summary || current.weather || current.description;
+    const temperature =
+      current.temp ??
+      current.temperature ??
+      current.temp_c ??
+      current.tempF ??
+      current.temperatureC ??
+      current.temperatureValue;
+    const feelsLike =
+      current.feels_like ??
+      current.feelsLike ??
+      current.feelsLikeTemp ??
+      current.apparent_temperature ??
+      current.apparentTemperature;
+    const summary =
+      current.summary ||
+      current.weather ||
+      current.description ||
+      this._mapWeatherType(current.weatherType);
     const humidity = current.humidity;
 
     const pieces = [];
@@ -252,7 +312,52 @@ Module.register("MMM-DailyBriefing", {
     return `${pieces.join(". ")}.`;
   },
 
-  _formatEvents(payload) {
+  _selectWeatherSnapshot(data) {
+    if (!data || typeof data !== "object") {
+      return null;
+    }
+    if (data.currentWeather) {
+      return data.currentWeather;
+    }
+    if (data?.data?.current) {
+      return data.data.current;
+    }
+    if (data.current) {
+      return data.current;
+    }
+    if (Array.isArray(data.hourlyArray) && data.hourlyArray.length) {
+      return data.hourlyArray[0];
+    }
+    return data;
+  },
+
+  _mapWeatherType(type) {
+    if (!type) {
+      return "";
+    }
+    const lookup = {
+      clear: "céu limpo",
+      cloudy: "nublado",
+      rain: "chuva",
+      rainy: "chuva",
+      snow: "neve",
+      storm: "tempestade",
+      thunderstorm: "tempestade",
+      drizzle: "garoa",
+      mist: "nevoeiro",
+      fog: "neblina",
+      sunny: "ensolarado",
+      partlycloudy: "parcialmente nublado",
+      partlyclouded: "parcialmente nublado",
+      overcast: "encoberto",
+      windy: "ventoso"
+    };
+
+  const normalized = String(type).toLowerCase().replaceAll(/[^a-z]/g, "");
+    return lookup[normalized] || String(type);
+  },
+
+  _prepareEventSummary(payload) {
     let list = [];
     if (Array.isArray(payload)) {
       list = payload;
@@ -260,8 +365,123 @@ Module.register("MMM-DailyBriefing", {
       list = payload.events;
     }
 
-    if (!list.length) {
-      return "";
+    const filtered = this._filterEvents(list);
+    if (!filtered.length) {
+      return { description: "", events: [] };
+    }
+
+    const now = new Date();
+    const lines = filtered.slice(0, this.config.maxEvents).map((event) => this._formatEventLine(event, now));
+    const description = lines.map((line) => `- ${line}`).join("\n");
+
+    return { description, events: filtered.slice(0, this.config.maxEvents) };
+  },
+
+  _filterEvents(events) {
+    if (!Array.isArray(events) || !events.length) {
+      return [];
+    }
+
+    const now = new Date();
+    const lookaheadMs = Math.max(0, Number(this.config.eventLookaheadHours || 0)) * 60 * 60 * 1000;
+    const pastMs = Math.max(0, Number(this.config.eventPastHours || 0)) * 60 * 60 * 1000;
+
+    return events.filter((event) => {
+      const start = this._parseEventStart(event);
+      if (!start) {
+        return false;
+      }
+
+      event._dailyBriefingStart = start;
+
+      if (this.config.onlySameDayEvents && !this._isSameDay(start, now)) {
+        return false;
+      }
+
+      const diff = start.getTime() - now.getTime();
+      if (lookaheadMs > 0 && diff > lookaheadMs) {
+        return false;
+      }
+      if (pastMs > 0 && diff < -pastMs) {
+        return false;
+      }
+      return true;
+    });
+  },
+
+  _parseEventStart(event) {
+    if (!event || typeof event !== "object") {
+      return null;
+    }
+
+    if (event._dailyBriefingStart instanceof Date && !Number.isNaN(event._dailyBriefingStart.getTime())) {
+      return event._dailyBriefingStart;
+    }
+
+    const sources = [
+      event.startDate,
+      event.startDateTime,
+      event.start,
+      event.startMoment,
+    ];
+
+    for (const value of sources) {
+      if (!value) {
+        continue;
+      }
+      if (typeof value === "number") {
+        return new Date(value);
+      }
+      if (typeof value === "string") {
+        const numeric = Number(value);
+        if (Number.isFinite(numeric)) {
+          const fromNumeric = new Date(numeric);
+          if (!Number.isNaN(fromNumeric.getTime())) {
+            return fromNumeric;
+          }
+        }
+        const fromString = new Date(value);
+        if (!Number.isNaN(fromString.getTime())) {
+          return fromString;
+        }
+        continue;
+      }
+      if (typeof value === "object") {
+        if (typeof value.valueOf === "function") {
+          const fromValue = new Date(value.valueOf());
+          if (!Number.isNaN(fromValue.getTime())) {
+            return fromValue;
+          }
+        }
+        if (typeof value.toDate === "function") {
+          const fromDate = value.toDate();
+          if (fromDate instanceof Date && !Number.isNaN(fromDate.getTime())) {
+            return fromDate;
+          }
+        }
+      }
+    }
+
+    return null;
+  },
+
+  _formatEventLine(event, now) {
+    const title = event?.title || event?.summary || "Compromisso";
+    const start = this._parseEventStart(event);
+    if (!start) {
+      return `${title} (horário indefinido)`;
+    }
+
+    if (this._isAllDayEvent(event)) {
+      return `${title} (dia inteiro)`;
+    }
+
+    if (this._isSameDay(start, now)) {
+      const formatter = new Intl.DateTimeFormat("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      return `${title} (${formatter.format(start)})`;
     }
 
     const formatter = new Intl.DateTimeFormat("pt-BR", {
@@ -269,23 +489,81 @@ Module.register("MMM-DailyBriefing", {
       hour: "2-digit",
       minute: "2-digit",
     });
+    return `${title} (${formatter.format(start)})`;
+  },
 
-    const mapped = list.slice(0, this.config.maxEvents).map((event) => {
-      const title = event?.title || event?.summary || "Compromisso";
-      const start = event?.startDate || event?.startDateTime || event?.start || event?.startMoment;
-      let startLabel = "sem horário";
-      if (start) {
-        const date = new Date(start);
-        if (Number.isNaN(date.getTime())) {
-          startLabel = String(start);
-        } else {
-          startLabel = formatter.format(date);
-        }
+  _isSameDay(a, b) {
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+  },
+
+  _isAllDayEvent(event) {
+    if (event && typeof event === "object") {
+      if (event.fullDayEvent === true || event.isFullDay === true || event.allDay === true) {
+        return true;
       }
-      return `${title} (${startLabel})`;
-    });
+      if (typeof event.startTime === "boolean" && event.startTime === false) {
+        return true;
+      }
+    }
+    return false;
+  },
 
-    return `Próximos compromissos: ${mapped.join(", ")}.`;
+  _broadcastClear() {
+    this.sendNotification("SENSORDATA_SUMMARY", {
+      ts: Date.now(),
+      source: "MMM-DailyBriefing",
+      senderId: this.identifier,
+      provider: null,
+      requestId: null,
+      type: "dailyBriefing:cleared",
+      text: null,
+      error: null,
+      weatherSummary: null,
+      agendaSummary: null,
+      events: [],
+    });
+  },
+
+  _broadcastSummary(payload) {
+    const ts = Date.now();
+    const context = this._pendingContext || {};
+    const summaryPayload = {
+      ts,
+      source: "MMM-DailyBriefing",
+      senderId: this.identifier,
+      provider: payload?.provider || null,
+      requestId: payload?.requestId || null,
+      type: payload?.error ? "dailyBriefing:error" : "dailyBriefing",
+      text: payload?.error ? null : (this.briefingText || null),
+      error: payload?.error || null,
+      weatherSummary: context.weatherSummary || null,
+      agendaSummary: context.eventSummary || null,
+      events: Array.isArray(context.eventsUsed)
+        ? context.eventsUsed
+            .slice(0, this.config.maxEvents)
+            .map((event) => this._summarizeEventForRelay(event))
+            .filter(Boolean)
+        : [],
+    };
+
+    this.sendNotification("SENSORDATA_SUMMARY", summaryPayload);
+  },
+
+  _summarizeEventForRelay(event) {
+    if (!event || typeof event !== "object") {
+      return null;
+    }
+    const start = this._parseEventStart(event);
+    return {
+      title: event.title || event.summary || null,
+      calendarName: event.calendarName || event.calendarNameOverride || null,
+      allDay: this._isAllDayEvent(event),
+      startISO: start instanceof Date && !Number.isNaN(start.getTime()) ? start.toISOString() : null,
+    };
   },
 
   _fingerprint(data) {

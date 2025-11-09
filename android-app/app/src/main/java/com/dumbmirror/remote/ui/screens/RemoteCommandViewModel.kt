@@ -23,7 +23,9 @@ data class RemoteCommandUiState(
     val connectionSummary: String = "Conexão não configurada.",
     val isSending: Boolean = false,
     val statusMessage: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val lastNotification: String? = null,
+    val commandSequence: Int = 0
 )
 
 class RemoteCommandViewModel(
@@ -61,14 +63,23 @@ class RemoteCommandViewModel(
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isSending = true, statusMessage = null, errorMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isSending = true,
+                    statusMessage = null,
+                    errorMessage = null,
+                    lastNotification = notification
+                )
+            }
             val gateway = try {
                 remoteGatewayFactory.create(currentConfig)
             } catch (ex: Exception) {
                 _uiState.update {
                     it.copy(
                         isSending = false,
-                        errorMessage = ex.message ?: "Falha ao preparar a conexão com o espelho."
+                        errorMessage = ex.message ?: "Falha ao preparar a conexão com o espelho.",
+                        lastNotification = notification,
+                        commandSequence = it.commandSequence + 1
                     )
                 }
                 return@launch
@@ -80,7 +91,9 @@ class RemoteCommandViewModel(
                     state.copy(
                         isSending = false,
                         statusMessage = successMessage ?: "Comando enviado com sucesso.",
-                        errorMessage = null
+                        errorMessage = null,
+                        lastNotification = notification,
+                        commandSequence = state.commandSequence + 1
                     )
                 } else {
                     val errorText = result.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }
@@ -88,7 +101,9 @@ class RemoteCommandViewModel(
                     state.copy(
                         isSending = false,
                         statusMessage = null,
-                        errorMessage = errorText
+                        errorMessage = errorText,
+                        lastNotification = notification,
+                        commandSequence = state.commandSequence + 1
                     )
                 }
             }

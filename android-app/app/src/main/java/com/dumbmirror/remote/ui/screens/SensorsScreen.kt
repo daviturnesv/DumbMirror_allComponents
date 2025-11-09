@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -34,6 +35,7 @@ import com.dumbmirror.remote.domain.model.SensorReading
 import com.dumbmirror.remote.ui.screens.RemoteCommand
 import com.dumbmirror.remote.ui.screens.RemoteCommandSection
 import com.dumbmirror.remote.ui.screens.RemoteCommandStyle
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -60,8 +62,18 @@ fun SensorsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
 
-    LaunchedEffect(commandState.statusMessage, commandState.errorMessage) {
-        val feedback = commandState.errorMessage ?: commandState.statusMessage
+    LaunchedEffect(commandState.commandSequence) {
+        val lastNotification = commandState.lastNotification
+        val statusMessage = commandState.statusMessage
+        val errorMessage = commandState.errorMessage
+        val summaryNotifications = setOf("DAILYBRIEFING_REFRESH", "DAILYBRIEFING_CLEAR")
+
+        if (!statusMessage.isNullOrBlank() && lastNotification in summaryNotifications) {
+            delay(1500)
+            sensorsViewModel.refreshSensors()
+        }
+
+        val feedback = errorMessage ?: statusMessage
         if (!feedback.isNullOrBlank()) {
             snackbarHostState.showSnackbar(feedback)
             commandViewModel.clearFeedback()
@@ -88,6 +100,22 @@ fun SensorsScreen(
                 label = "Atualizar histórico",
                 notification = "SENSORDATA_REFRESH_HISTORY",
                 successMessage = "Atualização do histórico solicitada.",
+                style = RemoteCommandStyle.OUTLINED
+            )
+        )
+    }
+
+    val briefingCommands = remember {
+        listOf(
+            RemoteCommand(
+                label = "Gerar resumo",
+                notification = "DAILYBRIEFING_REFRESH",
+                successMessage = "Resumo diário solicitado."
+            ),
+            RemoteCommand(
+                label = "Ocultar resumo",
+                notification = "DAILYBRIEFING_CLEAR",
+                successMessage = "Resumo diário será ocultado.",
                 style = RemoteCommandStyle.OUTLINED
             )
         )
@@ -202,6 +230,16 @@ fun SensorsScreen(
                     commandViewModel.sendCommand(command.notification, command.payload, command.successMessage)
                 },
                 description = "Dispare exportações ou atualizações imediatas do histórico."
+            )
+
+            RemoteCommandSection(
+                title = "Resumo diário",
+                commands = briefingCommands,
+                enabled = isEnabled,
+                onCommandClick = { command: RemoteCommand ->
+                    commandViewModel.sendCommand(command.notification, command.payload, command.successMessage)
+                },
+                description = "Gere ou oculte o resumo diário apresentado pelo espelho."
             )
 
             RemoteCommandSection(
@@ -416,11 +454,23 @@ private fun SensorJsonContent(element: JsonElement?, jsonText: String?, allowRaw
         Text(text = "Nenhum dado disponível.", style = MaterialTheme.typography.bodySmall)
         return
     }
+    val narrative = element.extractDailyBriefingNarrative()
     val condensed = element.buildCondensedSnapshot()
-    if (condensed != null) {
-        Text(text = condensed, style = MaterialTheme.typography.bodySmall)
-    } else {
-        Text(text = "Nenhum resumo disponível.", style = MaterialTheme.typography.bodySmall)
+
+    when {
+        !narrative.isNullOrBlank() -> {
+            Text(text = narrative.trim(), style = MaterialTheme.typography.bodyMedium)
+            if (!condensed.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = condensed, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        !condensed.isNullOrBlank() -> {
+            Text(text = condensed, style = MaterialTheme.typography.bodySmall)
+        }
+        else -> {
+            Text(text = "Nenhum resumo disponível.", style = MaterialTheme.typography.bodySmall)
+        }
     }
     if (!allowRawToggle || jsonText.isNullOrBlank()) {
         return
@@ -544,6 +594,33 @@ private fun JsonElement?.buildCondensedSnapshot(): String? {
         parts.add("Movimento ${percent}% de ${motionSamples} amostras")
     }
     return parts.takeIf { it.isNotEmpty() }?.joinToString(separator = " · ")
+}
+
+private fun JsonElement?.extractDailyBriefingNarrative(): String? {
+    val obj = this as? JsonObject ?: return null
+
+    val directText = obj["text"]?.toDisplayString()?.takeIf { !it.isNullOrBlank() }
+    if (!directText.isNullOrBlank()) {
+        return directText
+    }
+
+    val data = obj["data"] as? JsonObject
+    data?.get("text")?.toDisplayString()?.takeIf { !it.isNullOrBlank() }?.let { return it }
+
+    val weather = obj["weatherSummary"]?.toDisplayString()
+        ?: data?.get("weatherSummary")?.toDisplayString()
+    val agenda = obj["agendaSummary"]?.toDisplayString()
+        ?: data?.get("agendaSummary")?.toDisplayString()
+    val error = obj["error"]?.toDisplayString()
+        ?: data?.get("error")?.toDisplayString()
+
+    val parts = buildList {
+        if (!weather.isNullOrBlank()) add(weather)
+        if (!agenda.isNullOrBlank()) add(agenda)
+        if (!error.isNullOrBlank()) add("Erro: $error")
+    }
+
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(separator = "\n")
 }
 
 private fun JsonElement.asNumberString(): String? {
