@@ -3,7 +3,6 @@ package com.dumbmirror.remote.data.remote
 import com.dumbmirror.remote.domain.model.RelayDetails
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -24,7 +23,8 @@ private const val DEFAULT_TIMEOUT_SECONDS = 15L
 
 class RelayRemoteGateway(
     private val details: RelayDetails,
-    private val json: Json
+    private val json: Json,
+    private val relayClient: RelayClient
 ) : RemoteGateway {
 
     private val mirrorId: String
@@ -72,7 +72,7 @@ class RelayRemoteGateway(
         }
     }
 
-    override fun observeEvents(): Flow<RemoteEvent> = emptyFlow()
+    override fun observeEvents(): Flow<RemoteEvent> = relayClient.observe(details)
 
     private suspend fun executePost(url: String, body: JsonElement) {
         val requestBody = json.encodeToString(body).toRequestBody("application/json".toMediaType())
@@ -100,25 +100,3 @@ class RelayRemoteGateway(
     }
 }
 
-private fun Map<String, Any?>.toJsonElement(): JsonElement {
-    return JsonObject(entries.associate { (key, value) ->
-        key to value.toJsonElement()
-    })
-}
-
-private fun Any?.toJsonElement(): JsonElement = when (this) {
-    null -> JsonNull
-    is JsonElement -> this
-    is String -> JsonPrimitive(this)
-    is Number -> JsonPrimitive(this)
-    is Boolean -> JsonPrimitive(this)
-    is Map<*, *> -> JsonObject(this.entries.associate { (k, v) ->
-        k.toString() to v.toJsonElement()
-    })
-    is Iterable<*> -> buildJsonArray {
-        for (item in this@toJsonElement) {
-            add(item.toJsonElement())
-        }
-    }
-    else -> JsonPrimitive(this.toString())
-}

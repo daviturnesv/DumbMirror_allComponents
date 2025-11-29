@@ -26,6 +26,7 @@ Module.register("MMM-Screencast", {
 		this._webviewPoller = null;
 		this._currentWebview = null;
 		this._emptyFrameCount = 0;
+		this.debugPanelExpanded = true;
 		this.state = {
 			status: "idle",
 			app: null,
@@ -165,6 +166,19 @@ Module.register("MMM-Screencast", {
 	},
 
 	notificationReceived(notification, payload, sender) {
+		switch (notification) {
+			case "MMM-Screencast:DEBUG_COLLAPSE":
+				this._setDebugPanelExpanded(false);
+				return;
+			case "MMM-Screencast:DEBUG_EXPAND":
+				this._setDebugPanelExpanded(true);
+				return;
+			case "MMM-Screencast:DEBUG_TOGGLE":
+				this._setDebugPanelExpanded();
+				return;
+			default:
+				break;
+		}
 		if (notification.includes("MMM-Screencast")) {
 			this.sendSocketNotification(notification);
 		}
@@ -856,7 +870,7 @@ iframe, #player, .ytp-chrome-top, .ytp-cued-thumbnail-overlay, .ytp-chrome-botto
 		try {
 			const details = document.createElement("details");
 			details.className = "mmm-screencast-card__debug";
-			details.open = true;
+			details.open = Boolean(this.debugPanelExpanded);
 			const summary = document.createElement("summary");
 			summary.textContent = "Informações de debug";
 			details.appendChild(summary);
@@ -888,6 +902,18 @@ iframe, #player, .ytp-chrome-top, .ytp-cued-thumbnail-overlay, .ytp-chrome-botto
 		} catch (error) {
 			Log.debug("MMM-Screencast: falha ao atualizar painel de debug", error);
 		}
+	},
+
+	_setDebugPanelExpanded(forceValue) {
+		if (!this.config?.debug) {
+			return;
+		}
+		const nextValue = typeof forceValue === "boolean" ? forceValue : !this.debugPanelExpanded;
+		if (nextValue === this.debugPanelExpanded) {
+			return;
+		}
+		this.debugPanelExpanded = nextValue;
+		this.updateDom(200);
 	},
 
 	_buildDebugInfo() {

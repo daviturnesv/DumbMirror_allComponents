@@ -2,10 +2,9 @@ package com.dumbmirror.remote.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.QueueMusic
-import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -33,8 +32,8 @@ fun DumbMirrorApp() {
                 Destinations.all.forEach { destination ->
                     val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
                     val icon = when (destination.route) {
-                        Destinations.Dashboard.route -> Icons.Filled.Dashboard
-                        Destinations.Media.route -> Icons.Filled.QueueMusic
+                        Destinations.Config.route -> Icons.Filled.Settings
+                        Destinations.Media.route -> Icons.AutoMirrored.Filled.QueueMusic
                         Destinations.Sensors.route -> Icons.Filled.Timeline
                         else -> Icons.Filled.Settings
                     }

@@ -1,9 +1,11 @@
 package com.dumbmirror.remote
 
 import android.content.Context
+import com.dumbmirror.remote.data.auth.RelayAuthRepository
 import com.dumbmirror.remote.data.local.ConnectionRepository
 import com.dumbmirror.remote.data.local.RelayAccountRepository
 import com.dumbmirror.remote.data.remote.RemoteGatewayFactory
+import com.dumbmirror.remote.data.remote.RelayClient
 import com.dumbmirror.remote.data.remote.RelayRemoteDataSource
 import com.dumbmirror.remote.domain.model.RelayDefaults
 import kotlinx.serialization.json.Json
@@ -18,14 +20,23 @@ object AppGraph {
         private set
 
     private val json: Json by lazy { Json { ignoreUnknownKeys = true } }
-    lateinit var relayAccountRepository: RelayAccountRepository
+    lateinit var relayAuthRepository: RelayAuthRepository
+        private set
+
+    lateinit var relayClient: RelayClient
         private set
 
     fun initialize(context: Context) {
         val appContext = context.applicationContext
         connectionRepository = ConnectionRepository(appContext)
-        remoteGatewayFactory = RemoteGatewayFactory(json)
-        relayAccountRepository = RelayAccountRepository(appContext)
+        relayClient = RelayClient()
+        remoteGatewayFactory = RemoteGatewayFactory(relayClient, json)
+        val relayAccountRepository = RelayAccountRepository(appContext)
+        relayAuthRepository = RelayAuthRepository(
+            connectionRepository = connectionRepository,
+            relayAccountRepository = relayAccountRepository,
+            json = json
+        )
     }
 
     fun provideSaveConnectionUseCase(): SaveConnectionConfigUseCase {

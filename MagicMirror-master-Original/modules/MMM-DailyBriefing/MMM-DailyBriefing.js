@@ -162,12 +162,15 @@ Module.register("MMM-DailyBriefing", {
       return;
     }
 
-    if (!this.weatherData || !this.calendarData) {
+    const hasWeather = !!this.weatherData;
+    const hasCalendar = !!this.calendarData;
+
+    if (!hasWeather && !hasCalendar) {
       return;
     }
 
-    const weatherChanged = this._weatherFingerprint !== this._lastWeatherUsed;
-    const calendarChanged = this._calendarFingerprint !== this._lastCalendarUsed;
+    const weatherChanged = hasWeather && this._weatherFingerprint !== this._lastWeatherUsed;
+    const calendarChanged = hasCalendar && this._calendarFingerprint !== this._lastCalendarUsed;
 
     if (!weatherChanged && !calendarChanged) {
       return;
@@ -183,6 +186,12 @@ Module.register("MMM-DailyBriefing", {
   generateBriefing() {
     const context = this._buildPrompt();
     if (!context) {
+      this.isLoading = false;
+      this.errorText = "Sem dados de clima ou agenda disponíveis para gerar o resumo.";
+      this.briefingText = null;
+      this._pendingContext = null;
+      this._broadcastSummary({ error: this.errorText });
+      this.updateDom();
       return;
     }
 

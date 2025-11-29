@@ -6,10 +6,6 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
@@ -79,25 +75,4 @@ class LanRemoteGateway(
     }
 }
 
-private fun Map<String, Any?>.toJsonElement(): JsonElement {
-    return JsonObject(entries.associate { (key, value) ->
-        key to value.toJsonElement()
-    })
-}
 
-private fun Any?.toJsonElement(): JsonElement = when (this) {
-    null -> JsonNull
-    is JsonElement -> this
-    is String -> JsonPrimitive(this)
-    is Number -> JsonPrimitive(this)
-    is Boolean -> JsonPrimitive(this)
-    is Map<*, *> -> JsonObject(this.entries.associate { (k, v) ->
-        k.toString() to v.toJsonElement()
-    })
-    is Iterable<*> -> buildJsonArray {
-        for (item in this@toJsonElement) {
-            add(item.toJsonElement())
-        }
-    }
-    else -> JsonPrimitive(this.toString())
-}

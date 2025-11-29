@@ -1,6 +1,8 @@
 package com.dumbmirror.remote.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -27,10 +30,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.dumbmirror.remote.domain.model.ConnectionConfig
+import com.dumbmirror.remote.domain.model.ConnectionMode
 import com.dumbmirror.remote.domain.model.SensorReading
 import com.dumbmirror.remote.ui.screens.RemoteCommand
 import com.dumbmirror.remote.ui.screens.RemoteCommandSection
@@ -171,18 +181,6 @@ fun SensorsScreen(
                 payload = mapOf("action" to "hideCharts"),
                 successMessage = "Ocultação dos gráficos solicitada.",
                 style = RemoteCommandStyle.OUTLINED
-            ),
-            RemoteCommand(
-                label = "Aumentar relatório",
-                notification = "SENSORDATA_COMMAND",
-                payload = mapOf("action" to "reportScaleUp"),
-                successMessage = "Escala do relatório aumentada."
-            ),
-            RemoteCommand(
-                label = "Reduzir relatório",
-                notification = "SENSORDATA_COMMAND",
-                payload = mapOf("action" to "reportScaleDown"),
-                successMessage = "Escala do relatório reduzida."
             )
         )
     }
@@ -202,7 +200,12 @@ fun SensorsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Text(text = "Sensores", style = MaterialTheme.typography.headlineMedium)
-            Text(text = sensorsState.connectionSummary, style = MaterialTheme.typography.bodyMedium)
+            ConnectionStatusCard(
+                config = sensorsState.config,
+                summary = sensorsState.connectionSummary,
+                lastSync = sensorsState.lastUpdatedAt,
+                isReady = sensorsState.isConfigured && sensorsState.supportsDataFetch
+            )
             if (!commandState.isConfigured) {
                 Text(
                     text = "Configure a conexão na aba Dashboard para controlar os sensores remotamente.",
@@ -259,7 +262,7 @@ fun SensorsScreen(
                 onCommandClick = { command: RemoteCommand ->
                     commandViewModel.sendCommand(command.notification, command.payload, command.successMessage)
                 },
-                description = "Ajuste a exibição de gráficos e a escala do painel de relatório."
+                description = "Controle rapidamente a exibição dos gráficos no espelho."
             )
         }
     }
@@ -297,15 +300,6 @@ private fun SensorOverviewSection(
                 color = MaterialTheme.colorScheme.tertiary
             )
         } else {
-            state.lastUpdatedAt?.let { last ->
-                formatTimestamp(last)?.let { formatted ->
-                    Text(
-                        text = "Última atualização: $formatted",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
             SensorLatestCard(reading = state.latest)
 
             SensorJsonCard(
@@ -323,6 +317,106 @@ private fun SensorOverviewSection(
                 element = state.reportRaw
             )
         }
+    }
+}
+
+@Composable
+private fun ConnectionStatusCard(
+    config: ConnectionConfig,
+    summary: String,
+    lastSync: Long?,
+    isReady: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val indicatorColor = if (isReady) {
+        MaterialTheme.colorScheme.tertiary
+    } else {
+        MaterialTheme.colorScheme.error
+    }
+    val modeLabel = when (config.mode) {
+        ConnectionMode.LAN -> "LAN"
+        ConnectionMode.RELAY -> "Relay"
+    }
+    val endpoint = when (config.mode) {
+        ConnectionMode.LAN -> config.baseUrl.takeIf { it.isNotBlank() }
+        ConnectionMode.RELAY -> config.relay.baseUrl.takeIf { it.isNotBlank() }
+    }
+    val mirrorLabel = config.relay.mirrorName ?: config.relay.mirrorId
+    val statusDetail = summary.substringAfter("status:", missingDelimiterValue = "")
+        .trim()
+        .ifEmpty { null }
+    val statusText = statusDetail?.replaceFirstChar { it.uppercase() }
+        ?: if (config.isConfigured) {
+            if (isReady) "Conexão ativa" else "Configuração incompleta"
+        } else {
+            "Conexão não configurada"
+        }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(indicatorColor)
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(text = "Status da conexão", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            StatusInfoRow(label = "Modo", value = modeLabel)
+            endpoint?.let { url ->
+                StatusInfoRow(
+                    label = "Endpoint",
+                    value = url,
+                    monospace = true
+                )
+            }
+            mirrorLabel?.let { label ->
+                StatusInfoRow(label = "Espelho", value = label)
+            }
+            lastSync?.let { timestamp ->
+                formatTimestamp(timestamp)?.let { formatted ->
+                    StatusInfoRow(label = "Última sincronização", value = formatted)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusInfoRow(label: String, value: String, monospace: Boolean = false) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = label.uppercase(Locale.getDefault()),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Text(
+            text = value,
+            style = if (monospace) {
+                MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
+            } else {
+                MaterialTheme.typography.bodyMedium
+            }
+        )
     }
 }
 
@@ -345,39 +439,92 @@ private fun SensorLatestCard(reading: SensorReading?, modifier: Modifier = Modif
                     style = MaterialTheme.typography.bodySmall
                 )
             } else {
-                SensorValueRow(
-                    label = "Timestamp (sensor)",
-                    value = formatTimestamp(reading.timestampMs) ?: "—"
+                var showDetails by remember { mutableStateOf(false) }
+                val sensorTimestamp = formatTimestamp(reading.timestampMs) ?: "—"
+                Text(
+                    text = "Coletada em $sensorTimestamp",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                SensorValueRow(
-                    label = "Temperatura",
-                    value = reading.temperatureC?.let { String.format(Locale.getDefault(), "%.1f °C", it) } ?: "—"
-                )
-                SensorValueRow(
-                    label = "Umidade",
-                    value = reading.humidityPercent?.let { String.format(Locale.getDefault(), "%.1f %%", it) } ?: "—"
-                )
-                SensorValueRow(
-                    label = "Luminosidade",
-                    value = reading.lightLux?.let { String.format(Locale.getDefault(), "%.0f lx", it) } ?: "—"
-                )
-                SensorValueRow(
-                    label = "Movimento",
-                    value = formatMotion(reading)
-                )
-                SensorValueRow(
-                    label = "Recebido às",
-                    value = formatTimestamp(reading.receivedAt) ?: "—"
-                )
-                SensorValueRow(
-                    label = "Encaminhado às",
-                    value = formatTimestamp(reading.forwardedAt) ?: "—"
-                )
-                reading.sender?.takeIf { it.isNotBlank() }?.let { sender ->
-                    SensorValueRow(label = "Origem", value = sender)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SensorMetricTile(
+                        label = "Temperatura",
+                        value = formatTemp(reading.temperatureC),
+                        modifier = Modifier.weight(1f)
+                    )
+                    SensorMetricTile(
+                        label = "Umidade",
+                        value = formatHumidity(reading.humidityPercent),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SensorMetricTile(
+                        label = "Luminosidade",
+                        value = formatLux(reading.lightLux),
+                        modifier = Modifier.weight(1f)
+                    )
+                    SensorMetricTile(
+                        label = "Movimento",
+                        value = formatMotion(reading),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = { showDetails = !showDetails }) {
+                    Text(text = if (showDetails) "Ocultar detalhes da entrega" else "Ver detalhes da entrega")
+                }
+                if (showDetails) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    SensorValueRow(
+                        label = "Recebido às",
+                        value = formatTimestamp(reading.receivedAt) ?: "—"
+                    )
+                    SensorValueRow(
+                        label = "Encaminhado às",
+                        value = formatTimestamp(reading.forwardedAt) ?: "—"
+                    )
+                    reading.sender?.takeIf { it.isNotBlank() }?.let { sender ->
+                        SensorValueRow(label = "Origem", value = sender)
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SensorMetricTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = label.uppercase(Locale.getDefault()),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
@@ -513,12 +660,23 @@ private fun SensorReportContent(element: JsonElement?, jsonText: String?) {
 @Composable
 private fun SensorValueRow(label: String, value: String, modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(modifier = Modifier.width(12.dp))
-        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 

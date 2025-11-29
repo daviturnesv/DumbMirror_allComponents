@@ -1,6 +1,6 @@
 # DumbMirror Remote App
 
-Aplicativo Android nativo (Kotlin + Jetpack Compose) para controlar e monitorar o espelho inteligente à distância, com suporte tanto para rede local quanto, futuramente, via relay hospedado (ex.: Vercel).
+Aplicativo Android nativo (Kotlin + Jetpack Compose) para controlar e monitorar o espelho inteligente à distância, com suporte tanto para rede local quanto via relay hospedado no Render.
 
 ## Visão geral
 
@@ -22,15 +22,6 @@ android-app/
       util/       <- helpers (config, formato, etc.)
 ```
 
-## Roadmap imediato
-
-1. Criar clientes de API para MMM-Remote-Control (REST) e assinaturas socket.io.
-2. Implementar tela de emparelhamento (configuração de host, teste de conexão, salvar preferências).
-3. Construir dashboard inicial com status do espelho (página atual, música tocando, resumo disponível, sensores).
-4. Adicionar seções dedicadas (Mídia, Sensores, Câmera/Screencast, Resumo diário) com as ações existentes.
-5. Integrar recebimento de broadcasts (NOW_PLAYING, SENSORDATA_REPORT_BROADCAST, etc.) via socket.
-6. Preparar abstração para Relay cloud (interface `RemoteGateway` intercambiável entre LAN e SaaS).
-
 ## Requisitos de build
 
 - Android Studio Iguana ou mais recente.
@@ -44,10 +35,3 @@ Após clonar o repositório, abra `android-app` no Android Studio e execute:
 ```
 
 > Se preferir, gere o wrapper localmente com `gradle wrapper` antes do primeiro build.
-
-## Próximos passos
-
-- Definir formato de mensagens para o futuro servidor relay.
-- Implementar armazenamento seguro de tokens (EncryptedSharedPreferences / Jetpack DataStore).
-- Adicionar testes unitários para use cases e clientes de rede.
-- Preparar pipelines de CI (GitHub Actions) para lint e build do app.

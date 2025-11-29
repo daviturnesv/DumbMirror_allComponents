@@ -436,11 +436,43 @@ Module.register("MMM-SensorData", {
         if (payload?.status) { this.connectionStatus = payload.status; this.updateDom(); }
         break;
       case 'SENSORDATA_HISTORY':
-        this._history = payload; this.updateDom(); break;
+        this._history = payload;
+        this._bootstrapFromHistory(payload);
+        this.updateDom();
+        break;
       case 'SENSORDATA_EXPORT_DONE':
         this._handleExportDone(payload); break;
       case 'SENSORDATA_REPORT_READY':
         this._handleReportReady(payload); break;
+    }
+  },
+
+  _bootstrapFromHistory(historyPayload) {
+    if (this.sensorData) return;
+    const readings = historyPayload?.readings;
+    if (!Array.isArray(readings) || !readings.length) return;
+    const lastReading = readings[readings.length - 1];
+    if (!lastReading || typeof lastReading.ts !== 'number') return;
+    const normalized = {};
+    if (typeof lastReading.temperature === 'number') normalized.temperature = lastReading.temperature;
+    if (typeof lastReading.humidity === 'number') normalized.humidity = lastReading.humidity;
+    if (typeof lastReading.light === 'number') normalized.light = lastReading.light;
+    if (typeof lastReading.motion !== 'undefined') {
+      normalized.motion = typeof lastReading.motion === 'boolean'
+        ? lastReading.motion
+        : Number(lastReading.motion) === 1;
+    }
+    if (!Object.keys(normalized).length) return;
+    this.sensorData = normalized;
+    this.loaded = true;
+    this.lastUpdate = lastReading.ts;
+    const staleAfter = Number(this.config?.staleAfterSeconds);
+    if (Number.isFinite(staleAfter) && staleAfter > 0) {
+      const ageSeconds = (Date.now() - lastReading.ts) / 1000;
+      this.stale = ageSeconds >= staleAfter;
+    }
+    if (!this.connectionStatus || this.connectionStatus === 'connecting') {
+      this.connectionStatus = this.stale ? 'inactive' : 'disconnected';
     }
   },
 

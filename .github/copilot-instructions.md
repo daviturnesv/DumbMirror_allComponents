@@ -3,35 +3,35 @@
 ## Idioma Padrão
 - Sempre responda em português do Brasil (pt-BR), tanto na conversa quanto em comentários ou mensagens geradas no código.
 
-## Architecture & Flow
-- DumbMirror is split into a Relay service (`src/`), MagicMirror front-end (`MagicMirror-master-Original/`), and mobile/IoT clients; the Relay brokers commands between authenticated users and mirrors.
-- REST endpoints let the Android app register/login and administer mirrors, while Socket.IO (`/mirror` namespace) pushes commands to MagicMirror instances that authenticate with `mirrorId` + `secret`.
-- MongoDB Atlas stores `users` and `mirrors`; IDs are surfaced as strings so client code never manipulates `ObjectId`s directly.
+## Arquitetura e Fluxo
+- O DumbMirror está dividido em um serviço Relay (`src/`), front-end MagicMirror (`MagicMirror-master-Original/`) e clientes móveis/IoT; o Relay faz o intermédio de comandos entre usuários autenticados e os espelhos.
+- Endpoints REST permitem que o app Android registre/login e administre espelhos, enquanto Socket.IO (namespace `/mirror`) envia comandos para instâncias MagicMirror que se autenticam com `mirrorId` + `secret`.
+- MongoDB Atlas armazena `users` e `mirrors`; IDs são expostos como strings para que o código cliente nunca manipule `ObjectId`s diretamente.
 
-## Relay Server Implementation
-- `src/server.js` creates the Express app, wires auth, mirror CRUD, and socket behaviors; reuse the provided `asyncHandler` helper and `authenticateRequest` middleware for new routes.
-- Database helpers in `src/db.js` handle hashing (bcrypt) and ensure indexes—always call these instead of touching Mongo collections directly.
-- `src/auth.js` centralizes JWT creation/validation (`Bearer` tokens, 7-day TTL); new protected routes must call `authenticateRequest` to populate `req.user`.
-- Error responses consistently return `{ error: string }`; keep that format for client expectations and existing tests.
+## Implementação do Servidor Relay
+- `src/server.js` cria o app Express, conecta a autenticação, CRUD de mirrors e comportamentos de sockets; reutilize o helper `asyncHandler` fornecido e o middleware `authenticateRequest` para novas rotas.
+- Helpers de banco em `src/db.js` cuidam de hashing (bcrypt) e garantem índices—sempre chame estes em vez de acessar diretamente as coleções do Mongo.
+- `src/auth.js` centraliza criação/validação de JWT (tokens `Bearer`, TTL de 7 dias); novas rotas protegidas devem chamar `authenticateRequest` para popular `req.user`.
+- Respostas de erro retornam consistentemente `{ error: string }`; mantenha esse formato para as expectativas do cliente e testes existentes.
 
-## Local Dev & Testing
-- Install Node 18+, `npm install`, then `npm run dev` for hot reload or `npm start` for static run; env vars live in `.env` (see `relay-server/README.md`).
-- `tests/relay.e2e.test.mjs` runs with Ava + `mongodb-memory-server`; mimic this pattern for new tests to avoid real Atlas dependencies.
-- `npm test` exercises the Ava suite; curl-based smoke scripts (`relay-server/smoke-test.js`) hit `/health`, `/api/users`, `/api/auth/login` against local or Render deployments (`SMOKE_URL`).
-- TLS debugging helpers (`relay-server/tls-check.js`, `relay-server/test-mongo.js`) expect env vars and are the canonical way to verify Atlas connectivity before running the service.
+## Desenvolvimento Local & Testes
+- Instale Node 18+, `npm install`, depois `npm run dev` para hot reload ou `npm start` para execução estática; variáveis de ambiente vivem em `.env` (veja `relay-server/README.md`).
+- `tests/relay.e2e.test.mjs` roda com Ava + `mongodb-memory-server`; siga esse padrão para novos testes para evitar dependências do Atlas real.
+- `npm test` executa a suíte Ava; scripts de smoke baseados em curl (`relay-server/smoke-test.js`) atingem `/health`, `/api/users`, `/api/auth/login` contra deployments locais ou no Render (`SMOKE_URL`).
+- Helpers de debug TLS (`relay-server/tls-check.js`, `relay-server/test-mongo.js`) esperam variáveis de ambiente e são a forma canônica de verificar a conectividade com o Atlas antes de rodar o serviço.
 
-## MagicMirror Integration
-- The sample MagicMirror config at `MagicMirror-master-Original/config/config.js` shows how mirrors connect: update `relayUrl`, `mirrorId`, and `secret` per environment when testing.
-- Mirrors must emit `authenticate` with the secret immediately after connecting; server broadcasts `mirror-status` and `command-result`, so custom modules should listen for those events.
-- MagicMirror modules under `MagicMirror-master-Original/modules/` are mostly stock; project-specific work should live in dedicated modules rather than patching the core.
+## Integração com MagicMirror
+- O config de exemplo do MagicMirror em `MagicMirror-master-Original/config/config.js` mostra como os espelhos se conectam: atualize `relayUrl`, `mirrorId` e `secret` por ambiente ao testar.
+- Os espelhos devem emitir `authenticate` com o secret imediatamente após conectar; o servidor transmite `mirror-status` e `command-result`, então módulos customizados devem escutar esses eventos.
+- Módulos do MagicMirror em `MagicMirror-master-Original/modules/` são em sua maioria padrões; trabalho específico do projeto deve ficar em módulos dedicados em vez de modificar o core.
 
-## Patterns & Conventions
-- All new routes should be added to `src/server.js`; keep request validation minimal but explicit (return `400` with `{ error }` for missing fields).
-- Use `configureDatabase` if you need to override connection details inside tests or scripts; production code reads from `config` only once.
-- Socket handlers store state in the `mirrorConnections` map (`mirrorId` -> `{ socket, ownerId, lastSeen }`); extend that structure instead of creating parallel registries.
-- Log using `console.*` with `[context]` prefixes, matching existing style for easier Render log filtering.
-- Após qualquer modificação relevante (feature nova ou correção de bug), gerar um arquivo em `Andamento/` nomeado com timestamp (`YYYY-MM-DD-HHmmss.md`) explicando o que foi alterado e descrevendo o estado atual do código para sincronizar os agentes em máquinas diferentes.
+## Padrões & Convenções
+- Todas as novas rotas devem ser adicionadas em `src/server.js`; mantenha a validação de requisição mínima porém explícita (retorne `400` com `{ error }` para campos faltando).
+- Use `configureDatabase` se precisar sobrescrever detalhes de conexão dentro de testes ou scripts; o código de produção lê de `config` apenas uma vez.
+- Handlers de socket armazenam estado no mapa `mirrorConnections` (`mirrorId` -> `{ socket, ownerId, lastSeen }`); estenda essa estrutura em vez de criar registros paralelos.
+- Logue usando `console.*` com prefixos `[context]`, combinando com o estilo existente para facilitar filtragem nos logs do Render.
+- Após qualquer modificação relevante (feature nova ou correção de bug), gere um arquivo em `Andamento/` nomeado com timestamp (`YYYY-MM-DD-HHmmss.md`) explicando o que foi alterado e descrevendo o estado atual do código para sincronizar os agentes em máquinas diferentes.
 
-## Legacy Notes
-- The old SQLite scripts in `scripts/list.mjs` and `scripts/reset-db.mjs` are stale (reference removed APIs); avoid invoking them until they are rewritten for MongoDB.
-- `README_SUMMARY.md` in `relay-server/` documents the Atlas/Render migration—consult it before changing deployment assumptions.
+## Notas Legadas
+- Os antigos scripts SQLite em `scripts/list.mjs` e `scripts/reset-db.mjs` estão obsoletos (referenciam APIs removidas); evite invocá-los até que sejam reescritos para MongoDB.
+- `README_SUMMARY.md` em `relay-server/` documenta a migração Atlas/Render—consulte-o antes de alterar pressupostos de deploy.

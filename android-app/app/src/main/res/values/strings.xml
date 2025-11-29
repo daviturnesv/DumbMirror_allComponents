@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">DumbMirror Remote</string>
-    <string name="dashboard_title">Dashboard</string>
-    <string name="dashboard_description">Configure a conexão com o espelho e teste a comunicação.</string>
+    <string name="dashboard_title">Configuração</string>
+    <string name="dashboard_description">Gerencie login no Relay, escolha o espelho e teste a comunicação.</string>
     <string name="dashboard_configured">Conectado ao espelho em %1$s</string>
     <string name="dashboard_not_configured">Nenhum espelho configurado ainda.</string>
     <string name="dashboard_configure_button">Configurar</string>
@@ -21,9 +21,26 @@
     <string name="dashboard_relay_token_label">Token do Relay (JWT)</string>
     <string name="dashboard_relay_mirror_id_label">ID do Espelho (mirrorId)</string>
     <string name="dashboard_relay_hint">Faça login no servidor Relay para obter o token e selecione o espelho (mirrorId) cadastrado.</string>
-    <string name="dashboard_relay_hint_emulator">Dica: no Emulador Android, use http://10.0.2.2:PORT (ex.: 10.0.2.2:8081) em vez de localhost para acessar seu PC.</string>
     <string name="dashboard_relay_login_button">Fazer login</string>
+    <string name="dashboard_relay_logout_button">Sair</string>
     <string name="dashboard_relay_pick_mirror_button">Selecionar espelho</string>
+    <string name="dashboard_relay_session_logged">Autenticado no Relay como %1$s</string>
+    <string name="dashboard_relay_session_not_logged">Sessão Relay não autenticada.</string>
+    <string name="dashboard_relay_mirror_selected">Espelho selecionado: %1$s</string>
+    <string name="dashboard_relay_mirror_missing">Nenhum espelho selecionado.</string>
+    <string name="dashboard_relay_mirror_id_detail">ID: %1$s</string>
+    <string name="dashboard_status_ready">Pronto</string>
+    <string name="dashboard_status_attention">Requer atenção</string>
+    <string name="dashboard_status_missing">Configurar</string>
+    <string name="dashboard_session_title">Sessão do espelho</string>
+    <string name="dashboard_session_subtitle">Gerencie autenticação e conexão</string>
+    <string name="dashboard_status_mode_label">Modo</string>
+    <string name="dashboard_status_account_label">Conta Relay</string>
+    <string name="dashboard_status_mirror_label">Espelho vinculado</string>
+    <string name="dashboard_status_not_available">Não informado</string>
+    <string name="dashboard_status_relay_login_missing">Faça login no Relay para concluir a configuração.</string>
+    <string name="dashboard_status_relay_mirror_missing">Selecione um espelho no Relay para finalizar.</string>
+    <string name="dashboard_relay_session_section">Sessão no Relay</string>
     <string name="relay_login_title">Login no Relay</string>
     <string name="relay_login_email">Email</string>
     <string name="relay_login_password">Senha</string>

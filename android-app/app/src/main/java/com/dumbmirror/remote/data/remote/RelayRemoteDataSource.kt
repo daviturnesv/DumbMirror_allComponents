@@ -100,13 +100,6 @@ class RelayRemoteDataSource(
     response.body()?.report?.toReport()
     }
 
-    fun buildGateway(account: RelayAccount, json: Json): RelayRemoteGateway {
-        return RelayRemoteGateway(
-            details = account.toRelayDetails(),
-            json = json
-        )
-    }
-
     private fun ensureSuccess(response: Response<*>) {
         if (!response.isSuccessful) {
             val code = response.code()

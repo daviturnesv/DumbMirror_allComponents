@@ -6,10 +6,9 @@ data class AppDestination(
 )
 
 object Destinations {
-    val Dashboard = AppDestination("dashboard", "Dashboard")
-    val Media = AppDestination("media", "Mídia")
+    val Config = AppDestination("config", "Configuração")
+    val Media = AppDestination("media", "Controles")
     val Sensors = AppDestination("sensors", "Sensores")
-    val Systems = AppDestination("systems", "Sistemas")
 
-    val all = listOf(Dashboard, Media, Sensors, Systems)
+    val all = listOf(Config, Media, Sensors)
 }

@@ -104,6 +104,8 @@ module.exports = NodeHelper.create({
 
     const options = payload.options || {};
     const systemPrompt = options.systemPrompt || payload.systemPrompt || null;
+    const apiVersion = (options.apiVersion || process.env.GEMINI_API_VERSION || "v1beta").toString().trim();
+    const allowSystemInstruction = !/^v1(\D|$)/i.test(apiVersion);
     const temperature = this._resolveNumber(options.temperature ?? payload.temperature);
     const maxOutputTokens = this._resolveNumber(
       options.maxOutputTokens ?? options.maxTokens ?? payload.maxOutputTokens,
@@ -117,11 +119,17 @@ module.exports = NodeHelper.create({
       .toString()
       .trim();
 
-    const body = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+    const body = { contents: [] };
 
     if (systemPrompt) {
-      body.systemInstruction = { role: "system", parts: [{ text: systemPrompt }] };
+      if (allowSystemInstruction) {
+        body.systemInstruction = { role: "system", parts: [{ text: systemPrompt }] };
+      } else {
+        body.contents.push({ role: "user", parts: [{ text: `Instruções do sistema:\n${systemPrompt}` }] });
+      }
     }
+
+    body.contents.push({ role: "user", parts: [{ text: prompt }] });
 
     if (Number.isFinite(temperature)) {
       body.generationConfig = body.generationConfig || {};
@@ -134,7 +142,8 @@ module.exports = NodeHelper.create({
     }
 
     const fetchImpl = await this._ensureFetch();
-    const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+    const endpointVersion = apiVersion || "v1beta";
+    const url = `https://generativelanguage.googleapis.com/${endpointVersion}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
     const response = await fetchImpl(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
