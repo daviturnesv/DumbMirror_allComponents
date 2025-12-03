@@ -118,11 +118,54 @@ Garanta que o Windows concedeu acesso ao microfone para o Python.
 - **Broker MQTT:** certifique-se de que o Mosquitto esteja ativo (`services.msc`). Caso use broker remoto, atualize o campo `mqttServer` no `config.js` do `MMM-SensorData`.
 - **Scripts externos:** se houver automações em `mqtt_external/` ou `mmvoice_stage/`, configure o Agendador de Tarefas do Windows ou scripts `.bat` para iniciar junto com o espelho.
 
+### 8.1 Mosquitto como serviço Windows
+1. **Instale o pacote oficial** com o `winget` indicado na seção 1.2 e execute (uma única vez) `"C:\Program Files\mosquitto\mosquitto.exe" install` em um PowerShell elevado para registrar o serviço.
+2. **Configure o arquivo** `C:\Program Files\mosquitto\mosquitto.conf` para permitir conexões remotas e gravar logs (ajuste conforme sua política de segurança):
+  ```
+  listener 1883 0.0.0.0
+  allow_anonymous true
+  persistence true
+  persistence_location C:/mosquitto/data/
+  log_dest file C:/mosquitto/log/mosquitto.log
+  log_dest stdout
+  log_type all
+  connection_messages true
+  log_timestamp true
+  ```
+  > Se preferir autenticação, troque `allow_anonymous true` por `allow_anonymous false` e configure `password_file` e/ou `psk_file`.
+3. **Garanta as pastas** de dados e log com permissões de escrita para `LocalSystem` (conta usada pelo serviço):
+  ```powershell
+  New-Item -ItemType Directory -Force -Path C:\mosquitto\data,C:\mosquitto\log | Out-Null
+  icacls C:\mosquitto /grant "NT AUTHORITY\SYSTEM:(OI)(CI)(M)"
+  ```
+4. **Ajuste o binário usado pelo serviço (corrige o argumento `run` que encerra imediatamente):**
+  ```powershell
+  sc.exe config Mosquitto binPath= "\"C:\Program Files\mosquitto\mosquitto.exe\" -c \"C:\Program Files\mosquitto\mosquitto.conf\""
+  ```
+  > Dica: o espaço após `binPath=` é obrigatório e todas as aspas internas precisam estar escapadas com `\"` quando o comando é digitado dentro do PowerShell.
+5. **Defina inicialização automática e política de recuperação:**
+  ```powershell
+  Set-Service -Name Mosquitto -StartupType Automatic
+  sc.exe failure Mosquitto reset= 0 actions= restart/60000
+  ```
+6. **Inicie e valide:**
+  ```powershell
+  Start-Service -Name Mosquitto
+  sc.exe query Mosquitto
+  "C:\Windows\System32\netstat.exe" -ano | findstr 1883
+  Get-Content C:\mosquitto\log\mosquitto.log -Wait
+  & "C:\Program Files\mosquitto\mosquitto.exe" -c "C:\Program Files\mosquitto\mosquitto.conf" -v
+  ```
+  O status deve aparecer como `RUNNING` e o `netstat` deve listar `0.0.0.0:1883`. Use o `Get-Content -Wait` para acompanhar conexões. Se o serviço parar logo em seguida, consulte o *Event Viewer → Windows Logs → System* e filtre pelo `Source = Service Control Manager` para ver o código de falha.
+
+  > Alternativas manuais: se preferir subir o broker apenas quando necessário, use `scripts/windows/start-mosquitto.ps1` (PowerShell) ou `scripts/windows/start-mosquitto.bat` (duplo clique → Executar como administrador). Ambos encerram instâncias antigas e rodam o `mosquitto.exe -v` com o mesmo `mosquitto.conf`, mantendo o log na tela até você fechar a janela ou apertar `Ctrl+C`.
+
 ## 9. Executar o MagicMirror
 ```powershell
 cd MagicMirror-master-Original
 npm run start:windows
 ```
+> Alternativa rápida: crie um atalho para `scripts/windows/start-mirror.bat` (Executar como administrador opcional). Ele garante o `cd` para a pasta do MagicMirror e executa `npm run start:windows` automaticamente.
 Para apenas o servidor HTTP (sem Electron):
 ```powershell
 npm run server
