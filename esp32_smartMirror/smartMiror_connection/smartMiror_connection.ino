@@ -12,9 +12,9 @@
 #include <DHT.h>
 
 // --- Configurações de Rede ---
-const char* ssid = "G973F-2004";
+const char* ssid = "S936-2004";
 const char* password = "davi1234";
-const char* mqtt_server = "192.168.2.215";
+const char* mqtt_server = "10.108.47.183";
 
 // --- Clientes de Rede ---
 WiFiClient espClient;
@@ -38,7 +38,7 @@ PubSubClient client(espClient);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 DHT dht(DHT_PIN, DHT_TYPE);
 
-// --- Variáveis de Controlo de Tempo ---
+// --- Variáveis de Controle de Tempo ---
 unsigned long lastDisplayUpdate = 0;
 unsigned long lastNetworkReconnectAttempt = 0;
 unsigned long lastSensorPublish = 0;
