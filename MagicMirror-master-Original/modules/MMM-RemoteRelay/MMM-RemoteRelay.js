@@ -8,6 +8,12 @@ Module.register('MMM-RemoteRelay', {
     heartbeatInterval: 30000,
     autoAcknowledge: false,
     acknowledgementTimeout: 15000,
+    ttsAutoArm: {
+      enabled: false,
+      notifications: [],
+      timeoutMs: 20000,
+      payloadFlag: null
+    },
     forwardNotifications: [
       'SENSORDATA_REMOTE_UPDATE',
       'SENSORDATA_SUMMARY',
@@ -67,6 +73,7 @@ Module.register('MMM-RemoteRelay', {
 
   handleIncomingCommand({ commandId, notification, payload }) {
     console.log('[MMM-RemoteRelay] forwarding command', notification, payload);
+    this._maybeAutoArmTts(notification, payload, commandId);
     this.sendNotification(notification, payload);
 
     if (this.config.autoAcknowledge) {
@@ -150,5 +157,38 @@ Module.register('MMM-RemoteRelay', {
       sender: sender?.identifier || null,
       forwardedAt: Date.now()
     });
+  },
+
+  _maybeAutoArmTts(notification, payload, commandId) {
+    const autoArm = this.config?.ttsAutoArm;
+    if (!autoArm || autoArm.enabled === false) {
+      return;
+    }
+
+    if (this._isTtsCommand(notification)) {
+      return;
+    }
+
+    const notifications = Array.isArray(autoArm.notifications) ? autoArm.notifications : [];
+    const payloadFlag = typeof autoArm.payloadFlag === 'string' && autoArm.payloadFlag.length ? autoArm.payloadFlag : null;
+    const matchesNotification = notifications.length ? notifications.includes(notification) : false;
+    const matchesPayloadFlag = payloadFlag ? Boolean(payload?.[payloadFlag]) : false;
+
+    if (!matchesNotification && !matchesPayloadFlag) {
+      return;
+    }
+
+    const timeoutMs = Number.isFinite(autoArm.timeoutMs) ? autoArm.timeoutMs : this.defaults.ttsAutoArm.timeoutMs;
+    this.sendNotification('MIRROR_TTS_ENABLE', {
+      source: 'remote-relay',
+      reason: 'auto-arm',
+      commandId,
+      notification,
+      timeoutMs
+    });
+  },
+
+  _isTtsCommand(notification) {
+    return notification === 'MIRROR_TTS_ENABLE' || notification === 'MIRROR_TTS_DISABLE' || notification === 'MIRROR_TTS_TOGGLE' || notification === 'MIRROR_TTS_FORCE' || notification === 'MIRROR_TTS_REQUEST';
   }
 });

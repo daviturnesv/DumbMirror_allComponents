@@ -560,6 +560,7 @@ Module.register("MMM-DailyBriefing", {
     };
 
     this.sendNotification("SENSORDATA_SUMMARY", summaryPayload);
+    this._sendTtsRequest(summaryPayload);
   },
 
   _summarizeEventForRelay(event) {
@@ -587,5 +588,19 @@ Module.register("MMM-DailyBriefing", {
       }
       return String(Date.now());
     }
+  },
+
+  _sendTtsRequest(summaryPayload) {
+    if (!summaryPayload || !summaryPayload.text) {
+      return;
+    }
+
+    this.sendNotification("MIRROR_TTS_REQUEST", {
+      ts: Date.now(),
+      source: "MMM-DailyBriefing",
+      requestId: summaryPayload.requestId || null,
+      type: "dailyBriefing",
+      content: summaryPayload.text,
+    });
   },
 });
